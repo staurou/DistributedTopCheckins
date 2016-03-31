@@ -7,10 +7,6 @@ package ssn;
 
 import java.util.Date;
 
-/**
- *
- * @author sta
- */
 public class LocationStatsRequest {
     private double longitudeFrom;
     private double longitudeTo;
