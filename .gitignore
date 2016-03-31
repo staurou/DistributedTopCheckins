@@ -1,8 +1,9 @@
-nbproject/private/
-build/
-nbbuild/
-dist/
-nbdist/
-nbactions.xml
-.nb-gradle/
+NetBeansProject/nbproject/private/
+NetBeansProject/build/
+NetBeansProject/nbbuild/
+NetBeansProject/dist/
+NetBeansProject/nbdist/
+NetBeansProject/nbactions.xml
+NetBeansProject/.nb-gradle/
 FourquareNY/
+*~
