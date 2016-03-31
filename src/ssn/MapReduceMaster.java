@@ -52,6 +52,15 @@ public class MapReduceMaster {
                     exc.printStackTrace();
                 }
             });
+            serverChannel.accept(null, new CompletionHandler<AsynchronousSocketChannel, Void>() {
+                @Override public void completed(AsynchronousSocketChannel result, Void attachment) {
+                    ReceivefromReducer(result);
+                }
+
+                @Override public void failed(Throwable exc, Void attachment) {
+                    exc.printStackTrace();
+                }
+            });
         } catch (IOException ex) {
             System.err.println("Could not bound port "+24545);
             System.exit(-1);
@@ -118,5 +127,55 @@ public class MapReduceMaster {
             }
         });
         
+    }
+    private void ReceivefromReducer(AsynchronousSocketChannel channel){
+        final ByteBuffer buffer = ByteBuffer.allocateDirect(356);
+        readAll(channel, null, new DataHandler<Void>() {
+            @Override
+            public void handleData(String data, Void attachment) {
+                try {
+                  final ObjectMapper m = new ObjectMapper();
+                  ReplyFromReducer rep = m.readValue(data, ReplyFromReducer.class );
+                  sendToClient(rep);
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+            }
+
+            @Override
+            public void fail(Throwable exc, Void attachment) {
+                exc.printStackTrace();
+            }
+
+           
+        }, buffer);
+    }
+    private void sendToClient(ReplyFromReducer rep) {
+         long id = rep.getRequestId();
+         if (initialClientRequestChannels.containsKey(id)) {
+             AsynchronousSocketChannel ch = initialClientRequestChannels.getOrDefault(id, null);
+             byte[] repToCl = new ObjectMapper().writeValueAsString(rep.getReducerReply()).getBytes();
+             onClientConnect(repToCl,ch );
+         }
+         else{
+             System.out.println("RequestID not found");
+         }            
+    }
+    private void onClientConnect(byte[] reptoClB, AsynchronousSocketChannel ch){
+        ch.write(ByteBuffer.wrap(reptoClB), null, new CompletionHandler<Integer, Void>() {
+            @Override public void completed(Integer result, Void attachment) {
+                try {
+                    ch.close();
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+                System.out.println("Graptikan ola ston client");
+            }
+
+            @Override public void failed(Throwable exc, Void attachment) {
+                exc.printStackTrace();
+            }
+        });
+    
     }
 }
