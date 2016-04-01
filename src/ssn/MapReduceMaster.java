@@ -54,7 +54,7 @@ public class MapReduceMaster {
             });
             serverChannel.accept(null, new CompletionHandler<AsynchronousSocketChannel, Void>() {
                 @Override public void completed(AsynchronousSocketChannel result, Void attachment) {
-                    ReceivefromReducer(result);
+                    receiveFromReducer(result);
                 }
 
                 @Override public void failed(Throwable exc, Void attachment) {
@@ -128,7 +128,7 @@ public class MapReduceMaster {
         });
         
     }
-    private void ReceivefromReducer(AsynchronousSocketChannel channel){
+    private void receiveFromReducer(AsynchronousSocketChannel channel){
         final ByteBuffer buffer = ByteBuffer.allocateDirect(356);
         readAll(channel, null, new DataHandler<Void>() {
             @Override
@@ -152,13 +152,13 @@ public class MapReduceMaster {
     }
     private void sendToClient(ReplyFromReducer rep) {
          long id = rep.getRequestId();
-         if (initialClientRequestChannels.containsKey(id)) {
-             AsynchronousSocketChannel ch = initialClientRequestChannels.getOrDefault(id, null);
+         AsynchronousSocketChannel ch = initialClientRequestChannels.get(id);
+         if (ch != null) {
              byte[] repToCl = new ObjectMapper().writeValueAsString(rep.getReducerReply()).getBytes();
              onClientConnect(repToCl,ch );
          }
          else{
-             System.out.println("RequestID not found");
+             System.err.println("RequestID not found");
          }            
     }
     private void onClientConnect(byte[] reptoClB, AsynchronousSocketChannel ch){
