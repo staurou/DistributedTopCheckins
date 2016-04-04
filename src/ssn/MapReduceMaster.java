@@ -134,6 +134,7 @@ public class MapReduceMaster {
         });
         
     }
+    
     private void receiveFromReducer(AsynchronousSocketChannel channel){
         final ByteBuffer buffer = ByteBuffer.allocateDirect(356);
         readAll(channel, null, new DataHandler<Void>() {

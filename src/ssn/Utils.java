@@ -1,5 +1,6 @@
 package ssn;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
 
@@ -62,5 +63,21 @@ public class Utils {
             
         });
     }
-            
+         
+    
+    public static void connectAndWrite(AsynchronousSocketChannel ch, byte[] data) {
+        ch.write(ByteBuffer.wrap(data), null, new CompletionHandler<Integer, Void>() {
+            @Override public void completed(Integer result, Void attachment) {
+                try {
+                    ch.close();
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+            }
+
+            @Override public void failed(Throwable exc, Void attachment) {
+                exc.printStackTrace();
+            }
+        });
+    }
 }

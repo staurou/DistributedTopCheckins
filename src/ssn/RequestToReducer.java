@@ -2,6 +2,7 @@ package ssn;
 
 public class RequestToReducer {
     private long requestId;
+    private int mapperCount;
     private PoiStats[] poiStats;
 
     public long getRequestId() {
@@ -19,6 +20,13 @@ public class RequestToReducer {
     public void setPoiStats(PoiStats[] poiStats) {
         this.poiStats = poiStats;
     }
-    
+
+    public int getMapperCount() {
+        return mapperCount;
+    }
+
+    public void setMapperCount(int mapperCount) {
+        this.mapperCount = mapperCount;
+    }
     
 }

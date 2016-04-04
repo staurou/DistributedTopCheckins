@@ -4,7 +4,7 @@ package ssn;
 public class PoiStats {
     private double longitude;
     private double latitude;
-    private int counts;
+    private int count;
     private String POI;
 
     public double getLongitude() {
@@ -23,12 +23,12 @@ public class PoiStats {
         this.latitude = latitude;
     }
 
-    public int getCounts() {
-        return counts;
+    public int getCount() {
+        return count;
     }
 
-    public void setCounts(int counts) {
-        this.counts = counts;
+    public void setCount(int counts) {
+        this.count = counts;
     }
 
     public String getPOI() {
