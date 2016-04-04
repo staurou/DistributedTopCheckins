@@ -29,9 +29,9 @@ public class DataSource {
    }
    
 
-   public List<CheckinRequest> getCheckinsOrderByPoi(double longtiduteFrom,
+   public List<Checkin> getCheckinsOrderByPoi(double longtiduteFrom,
            double longtiduteTo,double latiduteFrom,double latiduteTo,Date dateCaptureFrom,Date dateCaptureTo){
-       List<CheckinRequest> list = new LinkedList<CheckinRequest>();
+       List<Checkin> list = new LinkedList<Checkin>();
        try {
            statement = connection.prepareStatement("SELECT * FROM checkins WRERE (latitude BETWEEN latiduteFrom  AND latiduteTo) AND (longtidute BETWEEN longtiduteFrom  AND longtiduteTo) AND (dateCapture BETWEEN dateCaptureFrom  AND dateCaptureTo);");
            setQuery();
@@ -41,7 +41,7 @@ public class DataSource {
        }
        while(resultSet.next()){
            //analoga me ta orismata toy constructor 
-           list.add(new CheckinRequest(resultSet.getString(),resultSet.getDouble(),resultSet.getDouble(),resultSet.getDate()));
+           list.add(new Checkin(resultSet.getString(),resultSet.getDouble(),resultSet.getDouble(),resultSet.getDate()));
        }
        return list;
    }
