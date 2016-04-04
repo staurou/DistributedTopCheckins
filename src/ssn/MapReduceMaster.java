@@ -1,5 +1,6 @@
 package ssn;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.*;
 import java.net.*;
@@ -24,7 +25,7 @@ public class MapReduceMaster {
         }
     }
     
-    private List<Mapper> mappers = Arrays.asList(
+    private final List<Mapper> mappers = Arrays.asList(
             new Mapper("localhost", 45748),
             new Mapper("localhost", 45564),
             new Mapper("localhost", 45448)
@@ -35,36 +36,36 @@ public class MapReduceMaster {
     
     private final AtomicLong requestIds = new AtomicLong(0);
     
-    private AsynchronousServerSocketChannel serverChannel;
+    private AsynchronousServerSocketChannel clientChannel;
+    private AsynchronousServerSocketChannel reducerChannel;
     private AsynchronousChannelGroup channelGroup;
     
-    public void initialize() {
-        try {
-            channelGroup = AsynchronousChannelGroup.withThreadPool(Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()));
-            serverChannel = AsynchronousServerSocketChannel.open(channelGroup);
-            serverChannel.bind(new InetSocketAddress(5484));
-            serverChannel.accept(null, new CompletionHandler<AsynchronousSocketChannel, Void>() {
-                @Override public void completed(AsynchronousSocketChannel result, Void attachment) {
-                    onNewRequestConnection(result);
-                }
+    public void initialize() throws IOException {
+        channelGroup = AsynchronousChannelGroup.withThreadPool(Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()));
+        
+        clientChannel = AsynchronousServerSocketChannel.open(channelGroup);
+        clientChannel.bind(new InetSocketAddress(5484));
+        clientChannel.accept(null, new CompletionHandler<AsynchronousSocketChannel, Void>() {
+            @Override public void completed(AsynchronousSocketChannel result, Void attachment) {
+                onNewRequestConnection(result);
+            }
 
-                @Override public void failed(Throwable exc, Void attachment) {
-                    exc.printStackTrace();
-                }
-            });
-            serverChannel.accept(null, new CompletionHandler<AsynchronousSocketChannel, Void>() {
-                @Override public void completed(AsynchronousSocketChannel result, Void attachment) {
-                    receiveFromReducer(result);
-                }
+            @Override public void failed(Throwable exc, Void attachment) {
+                exc.printStackTrace();
+            }
+        });
+        
+        reducerChannel = AsynchronousServerSocketChannel.open(channelGroup);
+        reducerChannel.bind(new InetSocketAddress(5485));
+        reducerChannel.accept(null, new CompletionHandler<AsynchronousSocketChannel, Void>() {
+            @Override public void completed(AsynchronousSocketChannel result, Void attachment) {
+                receiveFromReducer(result);
+            }
 
-                @Override public void failed(Throwable exc, Void attachment) {
-                    exc.printStackTrace();
-                }
-            });
-        } catch (IOException ex) {
-            System.err.println("Could not bound port "+24545);
-            System.exit(-1);
-        }
+            @Override public void failed(Throwable exc, Void attachment) {
+                exc.printStackTrace();
+            }
+        });
     }
     
     private void onNewRequestConnection(AsynchronousSocketChannel channel) {
@@ -99,8 +100,13 @@ public class MapReduceMaster {
             ch.connect(new InetSocketAddress(mapper.host, mapper.port), null, new CompletionHandler<Void, Void>() {
                 @Override  public void completed(Void result, Void attachment) {
                     reqToMap.setMapperId(mapperId);
-                    byte[] reqToMapB = new ObjectMapper().writeValueAsString(reqToMap).getBytes();
-                    onMapperConnect(reqToMapB, ch);
+                    byte[] reqToMapB;
+                    try {
+                        reqToMapB = new ObjectMapper().writeValueAsString(reqToMap).getBytes();
+                        onMapperConnect(reqToMapB, ch);
+                    } catch (JsonProcessingException ex) {
+                        ex.printStackTrace();
+                    }
                 }
 
                 @Override public void failed(Throwable exc, Void attachment) {
@@ -116,10 +122,10 @@ public class MapReduceMaster {
             @Override public void completed(Integer result, Void attachment) {
                 try {
                     ch.close();
+                    System.out.println("Requset sent to mapper");
                 } catch (IOException ex) {
                     ex.printStackTrace();
                 }
-                System.out.println("Graptikan ola ston mapper");
             }
 
             @Override public void failed(Throwable exc, Void attachment) {
@@ -150,12 +156,18 @@ public class MapReduceMaster {
            
         }, buffer);
     }
+    
     private void sendToClient(ReplyFromReducer rep) {
          long id = rep.getRequestId();
-         AsynchronousSocketChannel ch = initialClientRequestChannels.get(id);
+         AsynchronousSocketChannel ch = initialClientRequestChannels.remove(id);
          if (ch != null) {
-             byte[] repToCl = new ObjectMapper().writeValueAsString(rep.getReducerReply()).getBytes();
-             onClientConnect(repToCl,ch );
+             byte[] repToCl;
+             try {
+                 repToCl = new ObjectMapper().writeValueAsString(rep.getReducerReply()).getBytes();
+                 onClientConnect(repToCl,ch );
+             } catch (JsonProcessingException ex) {
+                 ex.printStackTrace();
+             }
          }
          else{
              System.err.println("RequestID not found");
@@ -166,10 +178,10 @@ public class MapReduceMaster {
             @Override public void completed(Integer result, Void attachment) {
                 try {
                     ch.close();
+                    System.out.println("Reply sent to client");
                 } catch (IOException ex) {
                     ex.printStackTrace();
                 }
-                System.out.println("Graptikan ola ston client");
             }
 
             @Override public void failed(Throwable exc, Void attachment) {
