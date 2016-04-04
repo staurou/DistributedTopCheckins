@@ -11,9 +11,9 @@ package ssn;
  */
 public class ReplyFromReducer {
      private long requestId;
-     Reply [] reducerReply;
+     PoiStats [] reducerReply;
 
-    public ReplyFromReducer(long requestId, Reply[] reducerReply) {
+    public ReplyFromReducer(long requestId, PoiStats[] reducerReply) {
         this.requestId = requestId;
         this.reducerReply = reducerReply;
     }
@@ -26,11 +26,11 @@ public class ReplyFromReducer {
         this.requestId = requestId;
     }
 
-    public Reply[] getReducerReply() {
+    public PoiStats[] getReducerReply() {
         return reducerReply;
     }
 
-    public void setReducerReply(Reply[] reducerReply) {
+    public void setReducerReply(PoiStats[] reducerReply) {
         this.reducerReply = reducerReply;
     }
     
