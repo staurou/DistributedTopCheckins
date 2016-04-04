@@ -1,13 +1,13 @@
 package interfaces;
 
 import java.net.Socket;
-import ssn.CheckinRequest;
+import ssn.Checkin;
 
 public interface AddNewCheckinServiceInterface {
 	
 	public void initialize();
 	public void waitForNewCheckinsThread();
-	public void insertCheckingToDatabase(CheckinRequest x);
+	public void insertCheckingToDatabase(Checkin x);
 	public void ackToClient(Socket io);
 	
 }
