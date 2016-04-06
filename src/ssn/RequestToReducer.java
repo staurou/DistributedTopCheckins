@@ -5,6 +5,15 @@ public class RequestToReducer {
     private int mapperCount;
     private PoiStats[] poiStats;
 
+    public RequestToReducer() {
+    }
+
+    public RequestToReducer(long requestId, int mapperCount, PoiStats[] poiStats) {
+        this.requestId = requestId;
+        this.mapperCount = mapperCount;
+        this.poiStats = poiStats;
+    }
+
     public long getRequestId() {
         return requestId;
     }

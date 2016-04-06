@@ -2,11 +2,21 @@ package ssn;
 
 
 public class PoiStats {
-    private double longitude;
-    private double latitude;
-    private int count;
     private String POI;
+    private double latitude;
+    private double longitude;
+    private int count;
 
+    public PoiStats() {
+    }
+
+    public PoiStats(String POI, double latitude, double longitude, int count) {
+        this.POI = POI;
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.count = count;
+    }
+    
     public double getLongitude() {
         return longitude;
     }
@@ -27,8 +37,8 @@ public class PoiStats {
         return count;
     }
 
-    public void setCount(int counts) {
-        this.count = counts;
+    public void setCount(int count) {
+        this.count = count;
     }
 
     public String getPOI() {

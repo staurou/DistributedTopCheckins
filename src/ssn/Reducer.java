@@ -7,20 +7,17 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
 import java.util.*;
+import static java.util.Arrays.asList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
-import java.util.stream.IntStream;
+import static ssn.Constants.*;
 import static ssn.Utils.readAll;
 
 public class Reducer {
-    private static final int REDUCE_LIMIT = 10;
-    
     private final Map<Long, List<RequestToReducer>> id_requestToReducer = new ConcurrentHashMap<>();
     
     private AsynchronousServerSocketChannel mapperChannel;
     private AsynchronousChannelGroup channelGroup;
-    
-    private final Object mapRequestMonitor = new Object();
     
     private String masterAddress;
     private int masterPort;
@@ -50,22 +47,33 @@ public class Reducer {
                 try {
                     final ObjectMapper m = new ObjectMapper();
                     RequestToReducer req = m.readValue(data, RequestToReducer.class);
-                    List<RequestToReducer> reqList;
-                    boolean respondNow = false;
-                    synchronized (mapRequestMonitor) {
-                        id_requestToReducer.putIfAbsent(req.getRequestId(), new LinkedList<>());
-                        reqList = id_requestToReducer.get(req.getRequestId());
-                        if (reqList.size() >= req.getMapperCount()) {
-                            respondNow = true;
-                            id_requestToReducer.remove(req.getRequestId());
-                        } else {
-                            reqList.add(req);
+                    
+                    if (req.getMapperCount() <= 1)
+                        throw new IllegalStateException("Request from mapper "+req.getRequestId()
+                                +" states that mappers count is "+req.getMapperCount()+" <= 0");
+                    
+                    if (req.getMapperCount() == 1) { // if only one mapper, reduce immediatelly
+                        sendResponceToMaster(req.getRequestId(), reduce(asList(req), REDUCE_LIMIT));
+                        if (id_requestToReducer.remove(req.getRequestId()) != null) {
+                            System.err.println("Ignoring previous request(s) from mapper because current request stated that mappers count is 1. Req id "+req.getRequestId());
                         }
+                        return;
                     }
-                    if (respondNow) {
-                        sendResponceToMaster(req.getRequestId(), reduce(reqList, REDUCE_LIMIT));
-                        
-                    }
+                    
+                    id_requestToReducer.merge(req.getRequestId(), new LinkedList<>(),
+                        (reqList, ignore) -> {
+                            reqList.add(req);
+                            if (reqList.size() >= req.getMapperCount()) {
+                                try {
+                                    sendResponceToMaster(req.getRequestId(), reduce(reqList, REDUCE_LIMIT));
+                                } catch (IOException ex) {
+                                    ex.printStackTrace();
+                                }
+                                return null; // remove the mappping
+                            } else {
+                                return reqList; // with the new request from mapper added
+                            }
+                        });
                 } catch (IOException ex) {
                     ex.printStackTrace();
                 }
@@ -80,20 +88,13 @@ public class Reducer {
         
         
     private PoiStats[] reduce(List<RequestToReducer> mapperRequests, int limit) {
-        TreeSet<PoiStats> sortedSet = new TreeSet<>(new Comparator<PoiStats>() {
-
-            @Override public int compare(PoiStats o1, PoiStats o2) {
-                return o2.getCount() - o1.getCount();
-            }
-        });
+        // put all pois in a sorted set, sorting by checkin count
+        TreeSet<PoiStats> sortedSet = new TreeSet<>((PoiStats o1, PoiStats o2) -> o2.getCount() - o1.getCount());
+        mapperRequests.parallelStream()
+                .map(req -> asList(req.getPoiStats()))
+                .sequential().forEach(sortedSet::addAll); // sequential because TreeSet is not thread safe
         
-        for (RequestToReducer req : mapperRequests) {
-            for (PoiStats poi : req.getPoiStats()) {
-                sortedSet.add(poi);
-            }
-        }
-        
-        
+        // select the top pois from the sorted set
         int responceSize = Math.max(limit, sortedSet.size());
         PoiStats[] result = new PoiStats[responceSize];
         int i = 0;
@@ -112,7 +113,7 @@ public class Reducer {
                 byte[] reqToMasterB;
                 try {
                     reqToMasterB = new ObjectMapper().writeValueAsString(new ReplyFromReducer(requestId, result)).getBytes();
-                    Utils.connectAndWrite(ch, reqToMasterB);
+                    Utils.writeAndClose(ch, reqToMasterB);
                 } catch (JsonProcessingException ex) {
                     ex.printStackTrace();
                 }

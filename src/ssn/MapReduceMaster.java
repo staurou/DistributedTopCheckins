@@ -10,8 +10,6 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import static ssn.Utils.*;
 
 public class MapReduceMaster {
@@ -96,14 +94,14 @@ public class MapReduceMaster {
         for (int i = 0; i < mappers.size(); i++) {
             Mapper mapper = mappers.get(i);
             AsynchronousSocketChannel ch = AsynchronousSocketChannel.open(channelGroup);
-            int mapperId = i;
+            final int mapperId = i;
             ch.connect(new InetSocketAddress(mapper.host, mapper.port), null, new CompletionHandler<Void, Void>() {
-                @Override  public void completed(Void result, Void attachment) {
+                @Override public void completed(Void result, Void attachment) {
                     reqToMap.setMapperId(mapperId);
                     byte[] reqToMapB;
                     try {
                         reqToMapB = new ObjectMapper().writeValueAsString(reqToMap).getBytes();
-                        onMapperConnect(reqToMapB, ch);
+                        writeAndClose(ch, reqToMapB);
                     } catch (JsonProcessingException ex) {
                         ex.printStackTrace();
                     }
@@ -115,24 +113,6 @@ public class MapReduceMaster {
                 
             });
         }
-    }
-    
-    private void onMapperConnect(byte[] reqToMapB, AsynchronousSocketChannel ch) {
-        ch.write(ByteBuffer.wrap(reqToMapB), null, new CompletionHandler<Integer, Void>() {
-            @Override public void completed(Integer result, Void attachment) {
-                try {
-                    ch.close();
-                    System.out.println("Requset sent to mapper");
-                } catch (IOException ex) {
-                    ex.printStackTrace();
-                }
-            }
-
-            @Override public void failed(Throwable exc, Void attachment) {
-                exc.printStackTrace();
-            }
-        });
-        
     }
     
     private void receiveFromReducer(AsynchronousSocketChannel channel){
@@ -165,30 +145,12 @@ public class MapReduceMaster {
              byte[] repToCl;
              try {
                  repToCl = new ObjectMapper().writeValueAsString(rep.getReducerReply()).getBytes();
-                 onClientConnect(repToCl,ch );
+                 writeAndClose(ch, repToCl);
              } catch (JsonProcessingException ex) {
                  ex.printStackTrace();
              }
-         }
-         else{
+         } else {
              System.err.println("RequestID not found");
          }            
-    }
-    private void onClientConnect(byte[] reptoClB, AsynchronousSocketChannel ch){
-        ch.write(ByteBuffer.wrap(reptoClB), null, new CompletionHandler<Integer, Void>() {
-            @Override public void completed(Integer result, Void attachment) {
-                try {
-                    ch.close();
-                    System.out.println("Reply sent to client");
-                } catch (IOException ex) {
-                    ex.printStackTrace();
-                }
-            }
-
-            @Override public void failed(Throwable exc, Void attachment) {
-                exc.printStackTrace();
-            }
-        });
-    
     }
 }

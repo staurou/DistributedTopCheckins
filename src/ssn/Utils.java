@@ -65,7 +65,7 @@ public class Utils {
     }
          
     
-    public static void connectAndWrite(AsynchronousSocketChannel ch, byte[] data) {
+    public static void writeAndClose(AsynchronousSocketChannel ch, byte[] data) {
         ch.write(ByteBuffer.wrap(data), null, new CompletionHandler<Integer, Void>() {
             @Override public void completed(Integer result, Void attachment) {
                 try {
