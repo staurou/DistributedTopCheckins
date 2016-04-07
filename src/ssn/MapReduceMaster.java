@@ -92,26 +92,27 @@ public class MapReduceMaster {
     private void sendToMappers(long id, LocationStatsRequest req) throws IOException {
         RequestToMapper reqToMap = new RequestToMapper(id, mappers.size(), req);
         for (int i = 0; i < mappers.size(); i++) {
-            Mapper mapper = mappers.get(i);
-            AsynchronousSocketChannel ch = AsynchronousSocketChannel.open(channelGroup);
-            final int mapperId = i;
-            ch.connect(new InetSocketAddress(mapper.host, mapper.port), null, new CompletionHandler<Void, Void>() {
-                @Override public void completed(Void result, Void attachment) {
-                    reqToMap.setMapperId(mapperId);
-                    byte[] reqToMapB;
-                    try {
-                        reqToMapB = new ObjectMapper().writeValueAsString(reqToMap).getBytes();
-                        writeAndClose(ch, reqToMapB);
-                    } catch (JsonProcessingException ex) {
-                        ex.printStackTrace();
-                    }
-                }
+            final Mapper mapper = mappers.get(i);
+            int mapperNumber = i;
+            reqToMap.setMapperId(mapperNumber);
+            try {
+                byte[] reqToMapB;
+                reqToMapB = new ObjectMapper().writeValueAsString(reqToMap).getBytes();
+                connectWriteClose(new InetSocketAddress(mapper.host, mapper.port),
+                    reqToMapB,
+                    new SuccessHandler<byte[]>() {
+                        @Override public void success(byte[] data) {
+                            System.out.println("Sent request with id "+id+" to mapper #"+mapperNumber);
+                        }
 
-                @Override public void failed(Throwable exc, Void attachment) {
-                    exc.printStackTrace();
-                }
-                
-            });
+                        @Override public void fail(Throwable exc, byte[] data) {
+                            exc.printStackTrace();
+                        }
+                    },
+                    channelGroup);
+            } catch (JsonProcessingException ex) {
+                ex.printStackTrace();
+            }
         }
     }
     
@@ -142,15 +143,20 @@ public class MapReduceMaster {
          long id = rep.getRequestId();
          AsynchronousSocketChannel ch = initialClientRequestChannels.remove(id);
          if (ch != null) {
-             byte[] repToCl;
-             try {
-                 repToCl = new ObjectMapper().writeValueAsString(rep.getReducerReply()).getBytes();
-                 writeAndClose(ch, repToCl);
-             } catch (JsonProcessingException ex) {
-                 ex.printStackTrace();
-             }
+             writeJsonAndClose(ch, rep, new SuccessHandler<ReplyFromReducer>() {
+
+                 @Override
+                 public void success(ReplyFromReducer data) {
+                     System.out.println("Sent reply to client. Request id "+id);
+                 }
+
+                 @Override
+                 public void fail(Throwable exc, ReplyFromReducer data) {
+                     exc.printStackTrace();
+                 }
+             });
          } else {
-             System.err.println("RequestID not found");
+             System.err.println("RequestID not found "+id);
          }            
     }
 }

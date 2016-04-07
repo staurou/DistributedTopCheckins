@@ -1,8 +1,13 @@
 package ssn;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 
 public class Utils {
@@ -11,6 +16,11 @@ public class Utils {
     public static interface DataHandler<A> {
         void handleData(String data, A attatcment);
         void fail(Throwable exc, A attachment);
+    }
+    
+    public static interface SuccessHandler<T> {
+        void success(T data);
+        void fail(Throwable exc, T data);
     }
     
     
@@ -65,19 +75,77 @@ public class Utils {
     }
          
     
-    public static void writeAndClose(AsynchronousSocketChannel ch, byte[] data) {
+    public static void writeAndClose(AsynchronousSocketChannel ch, byte[] data, SuccessHandler<byte[]> handle) {
         ch.write(ByteBuffer.wrap(data), null, new CompletionHandler<Integer, Void>() {
             @Override public void completed(Integer result, Void attachment) {
                 try {
                     ch.close();
+                    handle.success(data);
                 } catch (IOException ex) {
-                    ex.printStackTrace();
+                    handle.fail(ex, data);
                 }
             }
 
             @Override public void failed(Throwable exc, Void attachment) {
-                exc.printStackTrace();
+                handle.fail(exc, data);
             }
         });
+    }
+    
+    public static <T> void writeJsonAndClose(AsynchronousSocketChannel ch, T data, SuccessHandler<T> handle) {
+        try {
+            byte[] dataB;
+            dataB = new ObjectMapper().writeValueAsString(data).getBytes();
+            writeAndClose(ch, dataB, new SuccessHandler<byte[]>() {
+                @Override public void success(byte[] ignore) {
+                    handle.success(data);
+                }
+
+                @Override public void fail(Throwable exc, byte[] ignore) {
+                    handle.fail(exc, data);
+                }
+
+            });
+        } catch (JsonProcessingException ex) {
+            handle.fail(ex, data);
+        }
+    }
+    
+    public static <T> void connectWriteJsonClose(SocketAddress address, T data,
+            SuccessHandler<T> handle, AsynchronousChannelGroup channelGroup) {
+        try {
+            AsynchronousSocketChannel ch = AsynchronousSocketChannel.open(channelGroup);
+            ch.connect(address, null, new CompletionHandler<Void, Void>() {
+                @Override  public void completed(Void ignore, Void ignore2) {
+                    writeJsonAndClose(ch, data, handle);
+                }
+                
+                @Override public void failed(Throwable exc, Void attachment) {
+                    handle.fail(exc, data);
+                }
+                
+            });
+        } catch (IOException ex) {
+            handle.fail(ex, data);
+        }
+    }
+    
+    public static void connectWriteClose(SocketAddress address, byte[] data,
+            SuccessHandler<byte[]> handle, AsynchronousChannelGroup channelGroup) {
+        try {
+            AsynchronousSocketChannel ch = AsynchronousSocketChannel.open(channelGroup);
+            ch.connect(address, null, new CompletionHandler<Void, Void>() {
+                @Override  public void completed(Void ignore, Void ignore2) {
+                    writeAndClose(ch, data, handle);
+                }
+                
+                @Override public void failed(Throwable exc, Void attachment) {
+                    handle.fail(exc, data);
+                }
+                
+            });
+        } catch (IOException ex) {
+            handle.fail(ex, data);
+        }
     }
 }

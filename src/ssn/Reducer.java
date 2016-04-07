@@ -11,7 +11,7 @@ import static java.util.Arrays.asList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import static ssn.Constants.*;
-import static ssn.Utils.readAll;
+import static ssn.Utils.*;
 
 public class Reducer {
     private final Map<Long, List<RequestToReducer>> id_requestToReducer = new ConcurrentHashMap<>();
@@ -107,23 +107,21 @@ public class Reducer {
     }
     
     private void sendResponceToMaster(long requestId, PoiStats[] result) throws IOException {
-        AsynchronousSocketChannel ch = AsynchronousSocketChannel.open(channelGroup);
-        ch.connect(new InetSocketAddress(masterAddress, masterPort), result, new CompletionHandler<Void, PoiStats[]>() {
-            @Override  public void completed(Void ignore, PoiStats[] result) {
-                byte[] reqToMasterB;
-                try {
-                    reqToMasterB = new ObjectMapper().writeValueAsString(new ReplyFromReducer(requestId, result)).getBytes();
-                    Utils.writeAndClose(ch, reqToMasterB);
-                } catch (JsonProcessingException ex) {
-                    ex.printStackTrace();
+        Utils.connectWriteJsonClose(new InetSocketAddress(masterAddress, masterPort),
+            new ReplyFromReducer(requestId, result),
+            new SuccessHandler<ReplyFromReducer>() {
+
+                @Override
+                public void success(ReplyFromReducer data) {
+                    System.out.println("Sent reply to Master. Request id "+requestId);
                 }
-            }
 
-            @Override public void failed(Throwable exc, PoiStats[] attachment) {
-                exc.printStackTrace();
-            }
-
-        });
+                @Override
+                public void fail(Throwable exc, ReplyFromReducer data) {
+                    exc.printStackTrace();
+                }
+            },
+            channelGroup);
     }
     
 
