@@ -1,5 +1,8 @@
 package ssn;
 
+import ssn.models.ReplyFromReducer;
+import ssn.models.RequestToMapper;
+import ssn.models.LocationStatsRequest;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.*;

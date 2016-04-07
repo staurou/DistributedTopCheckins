@@ -1,4 +1,4 @@
-package ssn;
+package ssn.models;
 
 
 public class PoiStats {
