@@ -6,9 +6,7 @@ import java.io.IOException;
 import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
+import java.util.*;
 
 public class Utils {
     private static final int DEFAULT_BUFFER_SIZE = 256;
@@ -147,5 +145,23 @@ public class Utils {
         } catch (IOException ex) {
             handle.fail(ex, data);
         }
+    }
+    
+    public static Map<String, List<String>> parseArgs(String[] args, Collection<String> params) {
+        Set<String> paramSet = new HashSet<>(params);
+        Map<String, List<String>> result = new HashMap<>();
+        
+        String currentParam = null;
+        result.put(null, new ArrayList<>());  // initial arguments not following any param specifier
+        for (String arg : args) {
+            if (paramSet.contains(arg)) {
+                currentParam = arg;
+                result.putIfAbsent(currentParam, new ArrayList());
+            } else {
+                result.get(currentParam).add(arg);
+            }
+        }
+        
+        return result;
     }
 }
