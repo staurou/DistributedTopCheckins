@@ -7,6 +7,8 @@ import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class Utils {
     private static final int DEFAULT_BUFFER_SIZE = 256;
@@ -144,6 +146,17 @@ public class Utils {
             });
         } catch (IOException ex) {
             handle.fail(ex, data);
+        }
+    }
+    
+    public static boolean validateRemoteIpHost(AsynchronousSocketChannel ch, Collection<String> allowedHosts) {
+        try {
+            if (! (ch.getRemoteAddress() instanceof InetSocketAddress)) {
+                throw new IllegalArgumentException("Remote address is not an IP address");
+            }
+            return allowedHosts.contains(((InetSocketAddress) ch.getRemoteAddress()).getHostString());
+        } catch (IOException ex) {
+            throw new IllegalStateException("Could not determine remote address", ex);
         }
     }
     
