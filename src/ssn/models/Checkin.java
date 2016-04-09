@@ -3,12 +3,12 @@ package ssn.models;
 import java.util.Date;
 
 public class Checkin {
-    private long id;
-    private long userId;
+    private int id;
+    private int userId;
     private String poi;
     private String poiName;
     private String poiCategory;
-    private long poiCategoryId;
+    private int poiCategoryId;
     private double latitude;
     private double longitude;
     private Date time;
@@ -17,9 +17,7 @@ public class Checkin {
     public Checkin() {
     }
 
-    public Checkin(long id, long userId, String poi, String poiName,
-            String poiCategory, long poiCategoryId, double latitude,
-            double longitude, Date time, String photos) {
+    public Checkin(int id, int userId, String poi, String poiName, String poiCategory, int poiCategoryId, double latitude, double longitude, Date time, String photos) {
         this.id = id;
         this.userId = userId;
         this.poi = poi;
@@ -31,20 +29,20 @@ public class Checkin {
         this.time = time;
         this.photos = photos;
     }
-    
-    public long getId() {
+
+    public int getId() {
         return id;
     }
 
-    public void setId(long id) {
+    public void setId(int id) {
         this.id = id;
     }
 
-    public long getUserId() {
+    public int getUserId() {
         return userId;
     }
 
-    public void setUserId(long userId) {
+    public void setUserId(int userId) {
         this.userId = userId;
     }
 
@@ -72,11 +70,11 @@ public class Checkin {
         this.poiCategory = poiCategory;
     }
 
-    public long getPoiCategoryId() {
+    public int getPoiCategoryId() {
         return poiCategoryId;
     }
 
-    public void setPoiCategoryId(long poiCategoryId) {
+    public void setPoiCategoryId(int poiCategoryId) {
         this.poiCategoryId = poiCategoryId;
     }
 
@@ -111,4 +109,6 @@ public class Checkin {
     public void setPhotos(String photos) {
         this.photos = photos;
     }
+
+    
 }

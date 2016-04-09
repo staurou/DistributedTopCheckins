@@ -2,7 +2,7 @@ package ssn.models;
 
 public class ReplyFromReducer {
      private long requestId;
-     PoiStats [] reducerReply;
+     PoiStats[] reducerReply;
 
     public ReplyFromReducer() {
     }

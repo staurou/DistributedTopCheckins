@@ -3,8 +3,6 @@ package ssn.models;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public class Request {
     private String action;
@@ -35,7 +33,7 @@ public class Request {
         try {
             return m.readValue(body, clazz);
         } catch (IOException ex) {
-            throw new IllegalStateException("Request body object could not be converted to JSON", ex);
+            throw new IllegalStateException("Request body object could not be converted to "+clazz, ex);
         }
     }
 

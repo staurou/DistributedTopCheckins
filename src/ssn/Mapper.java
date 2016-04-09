@@ -5,7 +5,6 @@ import ssn.models.LocationStatsRequest;
 import ssn.models.Checkin;
 import ssn.models.PoiStats;
 import ssn.models.RequestToReducer;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.sql.SQLException;
@@ -16,92 +15,117 @@ import static java.lang.Math.*;
 import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
+import static java.util.Arrays.asList;
 import static ssn.Constants.*;
 import static ssn.Utils.*;
+import ssn.models.*;
 
 public class Mapper {
-    private static final int DUPLICATE_TIME_THRESHOLD = 120;
+    
     private DataSource ds;
     private final ExecutorService threadPool = Executors.newCachedThreadPool();
     
-    private AsynchronousServerSocketChannel mapsterChannel;
+    private AsynchronousServerSocketChannel serverChannel;
     private AsynchronousChannelGroup channelGroup;
     
     private SocketAddress reducerAddress;
     
-    public void initialize() throws IOException, SQLException {
-        ds = new DataSource("83.212.117.76/ds_systems_2016", "omada35", "omada35db");
+    public void initialize(int port, String masterAddress, SocketAddress reducerAddress) throws IOException, SQLException {
+        ds = new DataSource("localhost",  "test", "", "");
         
-        reducerAddress = new InetSocketAddress("localhost", 5489);
+        this.reducerAddress = reducerAddress;
         
         channelGroup = AsynchronousChannelGroup.withThreadPool(Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()));
-        mapsterChannel = AsynchronousServerSocketChannel.open(channelGroup);
-        mapsterChannel.bind(new InetSocketAddress(5491));
-        mapsterChannel.accept(null, new CompletionHandler<AsynchronousSocketChannel, Void>() {
+        serverChannel = AsynchronousServerSocketChannel.open(channelGroup);
+        serverChannel.bind(new InetSocketAddress(5491));
+        serverChannel.accept(null, new CompletionHandler<AsynchronousSocketChannel, Void>() {
             @Override public void completed(AsynchronousSocketChannel result, Void attachment) {
-                onMasterConnection(result);
+                serverChannel.accept(null, this);
+                if (!validateRemoteIpHost(result, asList(masterAddress, "localhost", "127.0.0.1"))) {
+                    try {
+                        System.err.println("Unknown host connection rejected "+result.getRemoteAddress());
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
+                    return;
+                }
+                onConnection(result);
             }
 
             @Override public void failed(Throwable exc, Void attachment) {
+                serverChannel.accept(null, this);
                 exc.printStackTrace();
             }
         });
+        System.out.println("Listening on "+port+"....");
+        while (true) {
+            try {
+                channelGroup.awaitTermination(15, TimeUnit.DAYS);
+            } catch (InterruptedException ex) {
+            }
+        }
     }
     
-    private void onMasterConnection(AsynchronousSocketChannel channel) {
+    private void onConnection(AsynchronousSocketChannel channel) {
         final ByteBuffer buffer = ByteBuffer.allocateDirect(356);
         readAll(channel, null, new Utils.DataHandler<Void>() {
             @Override
             public void handleData(String data, Void id) {
                 try {
                     ObjectMapper m = new ObjectMapper();
-                    RequestToMapper req = m.readValue(data, RequestToMapper.class);
-                    sendToReducer(map(req));
+                    Request req = m.readValue(data, Request.class);
+                    System.out.println("Request "+data);
+                    if ("locationStats".equals(req.getAction())) {
+                        sendToReducer(map(req.getBodyAs(RequestToMapper.class)));
+                    } else {
+                        writeJsonAndClose(channel, new ErrorReply("Unknown action "+req.getAction(), 400), null);
+                    }
                 } catch (IOException ex) {
                     ex.printStackTrace();
+                    writeJsonAndClose(channel, new ErrorReply(ex.getMessage(), 500), null);
                 }
             }
 
             @Override
             public void fail(Throwable exc, Void id) {
                 exc.printStackTrace();
+                writeJsonAndClose(channel, new ErrorReply(exc.getMessage(), 500), null);
             }
         }, buffer);
     }
     
     private void sendToReducer(RequestToReducer result) throws IOException {
         connectWriteJsonClose(reducerAddress,
-            result,
-            new SuccessHandler<RequestToReducer>() {
-                @Override public void success(RequestToReducer data) {
-                    System.out.println("Sent result to reducer. Request id "+data.getRequestId());
+            Request.fromObject("locationStats", reducerAddress),
+            new SuccessHandler<Request>() {
+                @Override public void success(Request data) {
+                    System.out.println("Sent result to reducer. Request id "+result.getRequestId());
                 }
 
-                @Override public void fail(Throwable exc, RequestToReducer data) {
+                @Override public void fail(Throwable exc, Request data) {
                     exc.printStackTrace();
                 }
             },
             channelGroup);
     }
     
-    private RequestToReducer map(RequestToMapper requestToMapper) {
-        final List<LocationStatsRequest> sr = requestToMapper.getMySubRequest();
+    // concurrently fetches checkins of given areas
+    private List<List<Checkin>> fetchCheckinsOfAreas(final List<LocationStatsRequest> sr) {
         final List<List<Checkin>> checkins = new LinkedList<>();
-        final List<PoiStats> pois = new LinkedList<>();
-
+        
         sr.stream().map((area) -> {
                 // concurrently request checkins of areas from db
                 return threadPool.submit(() -> {
                     final List<Checkin> areaCheckins = ds.getCheckinsOrderByPoi(
                             area.getLongitudeFrom(), area.getLatitudeTo(),
                             area.getLongitudeFrom(), area.getLongitudeTo(),
-                            area.getCaptureTimeFrom(), area.getCaptureTimeTo());
+                            area.getTimeFrom(), area.getTimeTo());
                     synchronized (checkins) {
                         checkins.add(areaCheckins);
                     }
                 });
             }
-        ).forEach(dataFetchAction -> {
+        ).forEach((Future dataFetchAction) -> {
             // wait all data fetch actions to complete
             while (!dataFetchAction.isDone()) {
                 try {
@@ -112,6 +136,13 @@ public class Mapper {
             }
             
         });
+        
+        return checkins;
+    }
+    
+    private RequestToReducer map(RequestToMapper requestToMapper) {
+        final List<List<Checkin>> checkins = fetchCheckinsOfAreas(requestToMapper.getMySubRequest());
+        final List<PoiStats> pois = new LinkedList<>();
         
         // because checkins are properlly sorted, duplicates must be subsequent
         final Checkin[] prev = {null};
@@ -125,10 +156,10 @@ public class Mapper {
             areaCheckins.stream() // loop over checkins
                 .filter(duplicateRemover)
                 .forEach(checkin -> {
-                    if (currentPoi[0] != null && Objects.equals(currentPoi[0].getPOI(), checkin.getPoi())) { // checkin of the same poi
+                    if (currentPoi[0] != null && Objects.equals(currentPoi[0].getPoi(), checkin.getPoi())) { // checkin of the same poi
                         currentPoi[0].setCount(currentPoi[0].getCount()+1);
                     } else { // poi has no more checkins
-                        currentPoi[0] = new PoiStats(checkin.getPoi(), checkin.getLatitude(), checkin.getLongitude(), 0);
+                        currentPoi[0] = new PoiStats(checkin.getPoi(), checkin.getPoiName(), checkin.getLatitude(), checkin.getLongitude(), 0);
                         synchronized (pois) {
                             pois.add(currentPoi[0]);
                         }
@@ -148,6 +179,46 @@ public class Mapper {
         return Objects.equals(a.getPoi(), b.getPoi())
                 && a.getUserId() == b.getUserId()
                 && a.getTime() != null && a.getTime() != null
-                && abs(a.getTime().toInstant().getEpochSecond() - b.getTime().toInstant().getEpochSecond()) < DUPLICATE_TIME_THRESHOLD;
+                && abs(a.getTime().getTime() - b.getTime().getTime()) < DUPLICATE_TIME_THRESHOLD;
+    }
+    
+    
+    static final String USAGE = "MAPPER USAGE\n"
+            + "Arguments:\n[-p PORT]"
+            + " [-r REDUCER_ADDRESS [REDUCER_PORT]]"
+            + " [-m MASTER_ADDRESS]"
+            + "\n\n Default PORT is "+DEFAULT_MAPPER_PORT
+            + ", Default MASTER_ADDRESS is localhost"
+            + ", Default REDUCER_ADDRESS is localhost"
+            + ", Default REDUCER_PORT is "+DEFAULT_REDUCER_PORT;
+    
+    public static void main(String[] args) throws IOException, SQLException {
+        Mapper instance = new Mapper();
+        
+        Map<String, List<String>> options = parseArgs(args, Arrays.asList("-p", "-cp", "-m", "-r", "-h"));
+        if (options.containsKey("-h") || options.size() <= 1) {
+            System.out.println(USAGE);
+            System.exit(0);
+        }
+        
+        final Integer pArg = firstIntOrNull(options.get("-p"));
+        int port = pArg != null ? pArg : DEFAULT_MAPPER_PORT;
+        final String mArg = firstOrNull(options.get("-m"));
+        String master = mArg != null ? mArg : "localhost";
+        
+        String reducerAddress = "localhost";
+        int reducerPort = DEFAULT_REDUCER_PORT;
+        
+        List<String> rArg = options.get("-r");
+        if (rArg != null) {
+            if (rArg.size() > 0) {
+                reducerAddress = rArg.get(0);
+            }
+            if (rArg.size() > 1) {
+                reducerPort = Integer.parseInt(rArg.get(1));
+            }
+        }
+        
+        instance.initialize(port, master, new InetSocketAddress(reducerAddress, reducerPort));
     }
 }

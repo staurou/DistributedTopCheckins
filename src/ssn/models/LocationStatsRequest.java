@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package ssn.models;
 
 import java.util.Date;
@@ -12,8 +7,8 @@ public class LocationStatsRequest {
     private double longitudeTo;
     private double latitudeFrom;
     private double latitudeTo;
-    private Date captureTimeFrom;
-    private Date captureTimeTo;
+    private Date timeFrom;
+    private Date timeTo;
 
     public double getLongitudeFrom() {
         return longitudeFrom;
@@ -47,20 +42,20 @@ public class LocationStatsRequest {
         this.latitudeTo = latitudeTo;
     }
 
-    public Date getCaptureTimeFrom() {
-        return captureTimeFrom;
+    public Date getTimeFrom() {
+        return timeFrom;
     }
 
-    public void setCaptureTimeFrom(Date captureTimeFrom) {
-        this.captureTimeFrom = captureTimeFrom;
+    public void setTimeFrom(Date timeFrom) {
+        this.timeFrom = timeFrom;
     }
 
-    public Date getCaptureTimeTo() {
-        return captureTimeTo;
+    public Date getTimeTo() {
+        return timeTo;
     }
 
-    public void setCaptureTimeTo(Date captureTimeTo) {
-        this.captureTimeTo = captureTimeTo;
+    public void setTimeTo(Date timeTo) {
+        this.timeTo = timeTo;
     }
     
     

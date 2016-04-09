@@ -75,7 +75,8 @@ public class Utils {
     }
          
     
-    public static void writeAndClose(AsynchronousSocketChannel ch, byte[] data, SuccessHandler<byte[]> handle) {
+    public static void writeAndClose(AsynchronousSocketChannel ch, byte[] data, SuccessHandler<byte[]> handler) {
+        SuccessHandler<byte[]> handle = nonNullOrDefault(handler);
         ch.write(ByteBuffer.wrap(data), null, new CompletionHandler<Integer, Void>() {
             @Override public void completed(Integer result, Void attachment) {
                 try {
@@ -92,10 +93,11 @@ public class Utils {
         });
     }
     
-    public static <T> void writeJsonAndClose(AsynchronousSocketChannel ch, T data, SuccessHandler<T> handle) {
+    public static <T> void writeJsonAndClose(AsynchronousSocketChannel ch, T data, SuccessHandler<T> handler) {
+        SuccessHandler<T> handle = nonNullOrDefault(handler);
         try {
             byte[] dataB;
-            dataB = new ObjectMapper().writeValueAsString(data).getBytes();
+            dataB = new ObjectMapper().writeValueAsBytes(data);
             writeAndClose(ch, dataB, new SuccessHandler<byte[]>() {
                 @Override public void success(byte[] ignore) {
                     handle.success(data);
@@ -112,7 +114,8 @@ public class Utils {
     }
     
     public static <T> void connectWriteJsonClose(SocketAddress address, T data,
-            SuccessHandler<T> handle, AsynchronousChannelGroup channelGroup) {
+            SuccessHandler<T> handler, AsynchronousChannelGroup channelGroup) {
+        SuccessHandler<T> handle = nonNullOrDefault(handler);
         try {
             AsynchronousSocketChannel ch = AsynchronousSocketChannel.open(channelGroup);
             ch.connect(address, null, new CompletionHandler<Void, Void>() {
@@ -131,7 +134,8 @@ public class Utils {
     }
     
     public static void connectWriteClose(SocketAddress address, byte[] data,
-            SuccessHandler<byte[]> handle, AsynchronousChannelGroup channelGroup) {
+            SuccessHandler<byte[]> handler, AsynchronousChannelGroup channelGroup) {
+        SuccessHandler<byte[]> handle = nonNullOrDefault(handler);
         try {
             AsynchronousSocketChannel ch = AsynchronousSocketChannel.open(channelGroup);
             ch.connect(address, null, new CompletionHandler<Void, Void>() {
@@ -147,6 +151,19 @@ public class Utils {
         } catch (IOException ex) {
             handle.fail(ex, data);
         }
+    }
+    
+    private static <T> SuccessHandler<T> nonNullOrDefault(SuccessHandler<T> h) {
+        return h != null ? h : new SuccessHandler<T>() {
+
+            @Override
+            public void success(T data) {}
+
+            @Override
+            public void fail(Throwable exc, T data) {
+                exc.printStackTrace();
+            }
+        };
     }
     
     public static boolean validateRemoteIpHost(AsynchronousSocketChannel ch, Collection<String> allowedHosts) {
@@ -176,5 +193,22 @@ public class Utils {
         }
         
         return result;
+    }
+    
+    public static <T> T firstOrNull(List<? extends T> list) {
+        if (list == null || list.isEmpty()) {
+            return null;
+        } else {
+            return list.get(0);
+        }
+    }
+    
+    public static Integer firstIntOrNull(List<String> list) {
+        String firstOrNull = firstOrNull(list);
+        if (firstOrNull != null) {
+            return Integer.parseInt(firstOrNull);
+        } else {
+            return null;
+        }
     }
 }

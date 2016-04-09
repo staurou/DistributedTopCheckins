@@ -2,7 +2,8 @@ package ssn.models;
 
 
 public class PoiStats {
-    private String POI;
+    private String poi;
+    private String poiName;
     private double latitude;
     private double longitude;
     private int count;
@@ -10,13 +11,14 @@ public class PoiStats {
     public PoiStats() {
     }
 
-    public PoiStats(String POI, double latitude, double longitude, int count) {
-        this.POI = POI;
+    public PoiStats(String poi, String poiName, double latitude, double longitude, int count) {
+        this.poi = poi;
+        this.poiName = poiName;
         this.latitude = latitude;
         this.longitude = longitude;
         this.count = count;
     }
-    
+
     public double getLongitude() {
         return longitude;
     }
@@ -41,11 +43,20 @@ public class PoiStats {
         this.count = count;
     }
 
-    public String getPOI() {
-        return POI;
+    public String getPoi() {
+        return poi;
     }
 
-    public void setPOI(String POI) {
-        this.POI = POI;
+    public void setPoi(String poi) {
+        this.poi = poi;
     }
+
+    public String getPoiName() {
+        return poiName;
+    }
+
+    public void setPoiName(String poiName) {
+        this.poiName = poiName;
+    }
+
 }
