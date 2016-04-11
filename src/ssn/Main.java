@@ -5,7 +5,7 @@ import java.sql.SQLException;
 
 public class Main {
     private static final String USAGE = "Available subcommands:\n"
-                    + "\tmaster  mapper  reducer\n"
+                    + "\tmaster  mapper  reducer  dummyclient\n"
                     + "For help on a specific subcommand type <subcommand> -h";
     
     public static void main(String[] args) throws IOException, SQLException {
@@ -20,6 +20,8 @@ public class Main {
                 Mapper.main(args); break;
             case "reducer":
                 Reducer.main(args); break;
+            case "dummyclient":
+                dummyclient.DummyClient.main(args); break;
             default:
                 System.out.println(USAGE);
         }
