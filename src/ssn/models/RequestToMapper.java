@@ -50,19 +50,4 @@ public class RequestToMapper implements Cloneable {
     public void setMapperId(int mapperId) {
         this.mapperId = mapperId;
     }
-    
-    
-    public List<LocationStatsRequest> mySubRequest() {
-        LocationStatsRequest part = new LocationStatsRequest();
-        part.setTimeFrom(locationStatsRequest.getTimeFrom());
-        part.setTimeTo(locationStatsRequest.getTimeTo());
-        part.setLongitudeFrom(locationStatsRequest.getLongitudeFrom());
-        part.setLongitudeTo(locationStatsRequest.getLongitudeTo());
-        
-        double partWidth = (locationStatsRequest.getLatitudeTo()-locationStatsRequest.getLatitudeFrom())/ mappersCount;
-        part.setLatitudeFrom(locationStatsRequest.getLatitudeFrom() + partWidth*mapperId);
-        part.setLatitudeTo(part.getLatitudeFrom() + partWidth);
-        
-        return Arrays.asList(part);
-    }
 }

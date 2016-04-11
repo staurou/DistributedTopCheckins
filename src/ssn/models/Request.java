@@ -31,7 +31,6 @@ public class Request {
     public <T> T getBodyAs(Class<T> clazz) {
         ObjectMapper m = new ObjectMapper();
         try {
-            System.out.println(body.replace("\\\"", "\""));
             return m.readValue(body.replace("\\\"", "\""), clazz);
         } catch (IOException ex) {
             throw new IllegalStateException("Request body could not be converted to "+clazz, ex);

@@ -113,9 +113,11 @@ public class Reducer {
             return;
         }
 
-        id_requestToReducer.merge(req.getRequestId(), new LinkedList<>(),
+        id_requestToReducer.merge(req.getRequestId(), new LinkedList<>(asList(req)),
             (reqList, ignore) -> {
+                System.out.println("At least i am here");
                 reqList.add(req);
+                System.out.println("reqList.size() "+reqList.size()+" req.getMapperCount() "+req.getMapperCount());
                 if (reqList.size() >= req.getMapperCount()) {
                     try {
                         sendResponceToMaster(req.getRequestId(), reduce(reqList, REDUCE_LIMIT));
@@ -174,12 +176,12 @@ public class Reducer {
     
 
         static final String USAGE = "REDUCER USAGE\n"
-            + "Arguments:\n[-p PORT]"
-            + "-m MAPPER_ADDRESS [MAPPER_ADDRESS]..."
+            + "Arguments: [-p PORT]"
+            + " -m MAPPER_ADDRESS [MAPPER_ADDRESS]..."
             + " [-s MASTER_ADDRESS [MASTER_CONTROL_PORT]]"
-            + "\n\n Default PORT is "+DEFAULT_REDUCER_PORT
-            + ", Default MASTER_ADDRESS is localhost"
-            + ", Default MASTER_CONTROL_PORT is "+DEFAULT_MASTER_CONTROL_PORT;
+            + "\nDefault PORT is "+DEFAULT_REDUCER_PORT
+            + ",\nDefault MASTER_ADDRESS is localhost"
+            + ",\nDefault MASTER_CONTROL_PORT is "+DEFAULT_MASTER_CONTROL_PORT;
     
     public static void main(String[] args) throws IOException {
         Reducer instance = new Reducer();

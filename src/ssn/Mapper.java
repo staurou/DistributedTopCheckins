@@ -16,6 +16,7 @@ import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
 import static java.util.Arrays.asList;
+import java.util.stream.Stream;
 import static ssn.Constants.*;
 import static ssn.Utils.*;
 import ssn.models.*;
@@ -100,105 +101,73 @@ public class Mapper {
             new SuccessHandler<Request>() {
                 @Override public void success(Request data) {
                     System.out.println("Sent result to reducer. Request id "+result.getRequestId());
+                    Arrays.fill(result.getPoiStats(), null);
                 }
 
                 @Override public void fail(Throwable exc, Request data) {
                     exc.printStackTrace();
+                    Arrays.fill(result.getPoiStats(), null);
                 }
             },
             channelGroup);
     }
     
-    // concurrently fetches checkins of given areas
-    private List<List<Checkin>> fetchCheckinsOfAreas(final List<LocationStatsRequest> sr) {
-        final List<List<Checkin>> checkins = new LinkedList<>();
-        
-        sr.stream().map((area) -> {
-                // concurrently request checkins of areas from db
-                return threadPool.submit(() -> {
-                    final List<Checkin> areaCheckins = ds.getCheckinsOrderByPoi(
-                            area.getLatitudeFrom(), area.getLatitudeTo(),
-                            area.getLongitudeFrom(), area.getLongitudeTo(),
-                            area.getTimeFrom(), area.getTimeTo());
-                    synchronized (checkins) {
-                        checkins.add(areaCheckins);
-                    }
-                });
-            }
-        ).forEach((Future dataFetchAction) -> {
-            // wait all data fetch actions to complete
-            while (!dataFetchAction.isDone()) {
-                try {
-                    dataFetchAction.get();
-                } catch (ExecutionException e) {
-                    e.printStackTrace();
-                } catch (InterruptedException e) { /* retry */ }
-            }
-            
-        });
-        
-        return checkins;
-    }
-    
     private RequestToReducer map(RequestToMapper requestToMapper) {
-        final List<List<Checkin>> checkins = fetchCheckinsOfAreas(requestToMapper.mySubRequest());
+        final List<Checkin> checkins = ds.getCheckinsOrderByPoiPhotos(requestToMapper);
         final List<PoiStats> pois = new ArrayList<>();
         
-        // because checkins are properlly sorted, duplicates must be subsequent
-        final Checkin[] prev = {null};
-        Predicate<Checkin> duplicateRemover = checkin -> {
-            boolean isDuplicate = prev[0] != null && isDuplicate(checkin, prev[0]);
-            prev[0] = checkin;
-            return !isDuplicate;
-        };
-        checkins.parallelStream().forEach(areaCheckins -> {  // loop over areas
-            final PoiStats[] currentPoi = {null};  // wrap current poi in an array to ba able to assign to it from lambda
-            areaCheckins.stream() // loop over checkins
-                .filter(duplicateRemover)
-                .forEach(checkin -> {
-                    if (currentPoi[0] != null && Objects.equals(currentPoi[0].getPoi(), checkin.getPoi())) { // checkin of the same poi
-                        currentPoi[0].setCount(currentPoi[0].getCount()+1);
-                    } else { // poi has no more checkins
-                        if (currentPoi[0] != null) {
-                            synchronized (pois) {
-                                addSortedIfTop(currentPoi[0], pois, (poiA, poiB) ->  poiA.getCount()-poiB.getCount(), REDUCE_LIMIT);
-    //                            pois.add(currentPoi[0]);
-                            }
-                        }
-                        currentPoi[0] = new PoiStats(checkin.getPoi(), checkin.getPoiName(), checkin.getLatitude(), checkin.getLongitude(), 1);
-                    }
+        final PoiStats[] currentPoi = {null};
+        Stream<Checkin> stream = checkins.stream();
+        if (!requestToMapper.getLocationStatsRequest().isCountDuplicatePhotos()) {
+            // because checkins are properlly sorted, duplicates must be subsequent
+            final Checkin[] prev = {null}; // wrap prev checkin in an array to ba able to assign to it from lambda
+            Predicate<Checkin> duplicateRemover = checkin -> {
+                boolean isDuplicate = prev[0] != null && isDuplicate(checkin, prev[0]);
+                prev[0] = checkin;
+                return !isDuplicate;
+            };
+            stream = stream.filter(duplicateRemover);
+        }
+        stream.forEach(checkin -> {
+            if (currentPoi[0] != null && Objects.equals(currentPoi[0].getPoi(), checkin.getPoi())) { // checkin of the same poi
+                currentPoi[0].setCount(currentPoi[0].getCount()+1);
+            } else { // poi has no more checkins
+                if (currentPoi[0] != null) {
+                    addSortedIfTop(currentPoi[0], pois, (poiA, poiB) ->  poiA.getCount()-poiB.getCount(), REDUCE_LIMIT);
                 }
-            );
+                currentPoi[0] = new PoiStats(checkin.getPoi(), checkin.getPoiName(), checkin.getLatitude(), checkin.getLongitude(), 1);
+            }
         });
+        checkins.clear();
         
-//        pois.sort((poiA, poiB) -> poiB.getCount() - poiA.getCount());
         final int poiCount = min(REDUCE_LIMIT, pois.size());
         PoiStats[] poiArray = pois.subList(0, poiCount).toArray(new PoiStats[poiCount]);
+        pois.clear();
         
         return new RequestToReducer(requestToMapper.getRequestId(), requestToMapper.getMappersCount(), poiArray);
     }
     
     private static boolean isDuplicate(Checkin a, Checkin b) {
         return Objects.equals(a.getPoi(), b.getPoi())
-                && a.getUserId() == b.getUserId()
-                && a.getTime() != null && a.getTime() != null
-                && abs(a.getTime().getTime() - b.getTime().getTime()) < DUPLICATE_TIME_THRESHOLD;
+                && a.getPhotos() != null && !"Not exists".equals(a.getPhotos())
+                && b.getPhotos() != null && !"Not exists".equals(b.getPhotos())
+                && Objects.equals(a.getPhotos(), b.getPhotos());
     }
     
     
     static final String USAGE = "MAPPER USAGE\n"
-            + "Arguments:\n[-p PORT]"
+            + "Arguments: [-p PORT]"
             + " [-r REDUCER_ADDRESS [REDUCER_PORT]]"
-            + " [-m MASTER_ADDRESS]"
-            + "\n\n Default PORT is "+DEFAULT_MAPPER_PORT
-            + ", Default MASTER_ADDRESS is localhost"
-            + ", Default REDUCER_ADDRESS is localhost"
-            + ", Default REDUCER_PORT is "+DEFAULT_REDUCER_PORT;
+            + " [-s MASTER_ADDRESS]"
+            + "\nDefault PORT is "+DEFAULT_MAPPER_PORT
+            + ", \nDefault MASTER_ADDRESS is localhost"
+            + ", \nDefault REDUCER_ADDRESS is localhost"
+            + ", \nDefault REDUCER_PORT is "+DEFAULT_REDUCER_PORT;
     
     public static void main(String[] args) throws IOException, SQLException {
         Mapper instance = new Mapper();
         
-        Map<String, List<String>> options = parseArgs(args, Arrays.asList("-p", "-cp", "-m", "-r", "-h"));
+        Map<String, List<String>> options = parseArgs(args, Arrays.asList("-p", "-cp", "-s", "-r", "-h"));
         if (options.containsKey("-h")) {
             System.out.println(USAGE);
             System.exit(0);
@@ -206,7 +175,7 @@ public class Mapper {
         
         final Integer pArg = firstIntOrNull(options.get("-p"));
         int port = pArg != null ? pArg : DEFAULT_MAPPER_PORT;
-        final String mArg = firstOrNull(options.get("-m"));
+        final String mArg = firstOrNull(options.get("-s"));
         String master = mArg != null ? mArg : "localhost";
         
         String reducerAddress = "localhost";

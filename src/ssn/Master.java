@@ -14,7 +14,7 @@ import static java.util.Arrays.asList;
 import static ssn.Utils.*;
 import static ssn.Constants.*;
 
-public class MapReduceMaster {
+public class Master {
     
     private class MapperRec {
         final String host;
@@ -229,16 +229,16 @@ public class MapReduceMaster {
     
     
     static final String USAGE = "MASTER USAGE\n"
-            + "Arguments:\n[-p CLIENT_PORT] [-cp CONTROL_PORT]"
-            + "-m MAPPER_ADDRESS MAPPER_PORT [MAPPER_ADDRESS MAPPER_PORT]..."
+            + "Arguments: [-p CLIENT_PORT] [-cp CONTROL_PORT]"
+            + " -m MAPPER_ADDRESS MAPPER_PORT [MAPPER_ADDRESS MAPPER_PORT]..."
             + " [-r REDUCER_ADDRESS [REDUCER_PORT]]"
-            + "\n\n Default CLIENT_PORT is "+DEFAULT_MASTER_CLIENT_PORT
-            + ", Default CONTROL_PORT is "+DEFAULT_MASTER_CONTROL_PORT
-            + ", Default REDUCER_ADDRESS is localhost"
-            + ", Default REDUCER_PORT is "+DEFAULT_REDUCER_PORT;
+            + "\nDefault CLIENT_PORT is "+DEFAULT_MASTER_CLIENT_PORT
+            + ", \nDefault CONTROL_PORT is "+DEFAULT_MASTER_CONTROL_PORT
+            + ", \nDefault REDUCER_ADDRESS is localhost"
+            + ", \nDefault REDUCER_PORT is "+DEFAULT_REDUCER_PORT;
     
     public static void main(String[] args) throws IOException {
-        MapReduceMaster instance = new MapReduceMaster();
+        Master instance = new Master();
         
         Map<String, List<String>> options = parseArgs(args, Arrays.asList("-p", "-cp", "-m", "-r", "-h"));
         if (options.containsKey("-h") || options.size() <= 1) {

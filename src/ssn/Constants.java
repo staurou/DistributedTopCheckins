@@ -1,8 +1,12 @@
 package ssn;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+
 public interface Constants {
+    static final DateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    
     static final int REDUCE_LIMIT = 10;
-    static final int DUPLICATE_TIME_THRESHOLD = 120000;
     
     static final String DEFAULT_DATASOURCE_HOST = "83.212.117.76";
     static final String DEFAULT_DATASOURCE_SCHEMA = "ds_systems_2016";

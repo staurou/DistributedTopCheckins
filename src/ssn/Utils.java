@@ -53,25 +53,25 @@ public class Utils {
         });
     }
     
-    public static <A> void writeAll(AsynchronousSocketChannel chanel, A attachment,
-            DataHandler<A> handler, ByteBuffer b) {
-        chanel.write(b, attachment, new CompletionHandler<Integer, A>() {
-            @Override
-            public void completed(Integer bytesRead, A attachment) {
-                if (b.remaining() <= 0) {
-                    handler.handleData(null, attachment);
-                    return;
-                }
-                chanel.write(b, attachment, this);
-            }
-
-            @Override
-            public void failed(Throwable exc, A attachment) {
-                handler.fail(exc, attachment);
-            }
-            
-        });
-    }
+//    public static <A> void writeAll(AsynchronousSocketChannel chanel, A attachment,
+//            DataHandler<A> handler, ByteBuffer b) {
+//        chanel.write(b, attachment, new CompletionHandler<Integer, A>() {
+//            @Override
+//            public void completed(Integer bytesRead, A attachment) {
+//                if (b.remaining() <= 0) {
+//                    handler.handleData(null, attachment);
+//                    return;
+//                }
+//                chanel.write(b, attachment, this);
+//            }
+//
+//            @Override
+//            public void failed(Throwable exc, A attachment) {
+//                handler.fail(exc, attachment);
+//            }
+//            
+//        });
+//    }
          
     
     public static void writeAndClose(AsynchronousSocketChannel ch, byte[] data, SuccessHandler<byte[]> handler) {

@@ -9,7 +9,10 @@ public class LocationStatsRequest {
     private double latitudeTo;
     private Date timeFrom;
     private Date timeTo;
-
+    
+    private boolean countDuplicatePhotos;
+    
+    
     public double getLongitudeFrom() {
         return longitudeFrom;
     }
@@ -57,7 +60,13 @@ public class LocationStatsRequest {
     public void setTimeTo(Date timeTo) {
         this.timeTo = timeTo;
     }
-    
-    
+
+    public boolean isCountDuplicatePhotos() {
+        return countDuplicatePhotos;
+    }
+
+    public void setCountDuplicatePhotos(boolean countDuplicatePhotos) {
+        this.countDuplicatePhotos = countDuplicatePhotos;
+    }
     
 }

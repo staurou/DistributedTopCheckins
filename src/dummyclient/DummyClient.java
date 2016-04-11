@@ -5,18 +5,17 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
-import java.text.DateFormat;
 import java.text.NumberFormat;
 import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.*;
 import javax.swing.JFormattedTextField;
 import javax.swing.table.AbstractTableModel;
+import static ssn.Constants.DATE_FORMAT;
 import ssn.models.*;
 
 public class DummyClient extends javax.swing.JFrame {
 
-    DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    
     
     private final ResultsModel resultsModel = new ResultsModel();
     
@@ -27,8 +26,8 @@ public class DummyClient extends javax.swing.JFrame {
         latitudeTo.setValue(40.7);
         longitudeTo.setValue(-74.0);
         try {
-            timeFrom.setValue(dateFormat.parse("2012-04-03 00:00:00"));
-            timeTo.setValue(dateFormat.parse("2012-04-03 23:59:59"));
+            timeFrom.setValue(DATE_FORMAT.parse("2012-04-03 00:00:00"));
+            timeTo.setValue(DATE_FORMAT.parse("2012-04-03 23:59:59"));
         } catch (ParseException ex) {}
     }
 
@@ -107,6 +106,7 @@ public class DummyClient extends javax.swing.JFrame {
         port = new javax.swing.JFormattedTextField();
         search = new javax.swing.JButton();
         durationLabel = new javax.swing.JLabel();
+        countDuplicatePhotos = new javax.swing.JCheckBox();
         resultsPane = new javax.swing.JPanel();
         resultsScroll = new javax.swing.JScrollPane();
         resultsTable = new javax.swing.JTable();
@@ -114,7 +114,7 @@ public class DummyClient extends javax.swing.JFrame {
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("Distributed Top Checkins");
 
-        formPane.setBorder(javax.swing.BorderFactory.createEmptyBorder(20, 25, 25, 20));
+        formPane.setBorder(javax.swing.BorderFactory.createEmptyBorder(20, 25, 3, 20));
         formPane.setOpaque(false);
         formPane.setLayout(new java.awt.GridBagLayout());
 
@@ -238,7 +238,7 @@ public class DummyClient extends javax.swing.JFrame {
 
         hostLabel.setText("Host");
         gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridy = 6;
+        gridBagConstraints.gridy = 98;
         gridBagConstraints.weightx = 0.1;
         gridBagConstraints.insets = new java.awt.Insets(16, 0, 0, 0);
         formPane.add(hostLabel, gridBagConstraints);
@@ -247,7 +247,7 @@ public class DummyClient extends javax.swing.JFrame {
         host.setText("localhost");
         host.setMinimumSize(new java.awt.Dimension(100, 27));
         gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridy = 6;
+        gridBagConstraints.gridy = 98;
         gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
         gridBagConstraints.weightx = 0.4;
         gridBagConstraints.insets = new java.awt.Insets(16, 0, 0, 0);
@@ -255,18 +255,17 @@ public class DummyClient extends javax.swing.JFrame {
 
         portLabel.setText("Port");
         gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridy = 6;
+        gridBagConstraints.gridy = 98;
         gridBagConstraints.weightx = 0.1;
         gridBagConstraints.insets = new java.awt.Insets(16, 0, 0, 0);
         formPane.add(portLabel, gridBagConstraints);
 
         port.setFormatterFactory(new javax.swing.text.DefaultFormatterFactory(new javax.swing.text.NumberFormatter(new java.text.DecimalFormat("###0"))));
-        port.setText("25697");
         port.setToolTipText("");
         port.setMinimumSize(new java.awt.Dimension(100, 27));
         port.setValue(25697);
         gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridy = 6;
+        gridBagConstraints.gridy = 98;
         gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
         gridBagConstraints.weightx = 0.4;
         gridBagConstraints.insets = new java.awt.Insets(16, 0, 0, 0);
@@ -283,13 +282,23 @@ public class DummyClient extends javax.swing.JFrame {
         gridBagConstraints.gridy = 100;
         gridBagConstraints.gridwidth = java.awt.GridBagConstraints.REMAINDER;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.EAST;
-        gridBagConstraints.insets = new java.awt.Insets(20, 0, 0, 0);
+        gridBagConstraints.insets = new java.awt.Insets(15, 0, 0, 0);
         formPane.add(search, gridBagConstraints);
 
         durationLabel.setFont(new java.awt.Font("Ubuntu", 2, 15)); // NOI18N
+        durationLabel.setText(" ");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
         formPane.add(durationLabel, gridBagConstraints);
+
+        countDuplicatePhotos.setText("Count Duplicate Photos");
+        countDuplicatePhotos.setHorizontalTextPosition(javax.swing.SwingConstants.LEADING);
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 3;
+        gridBagConstraints.gridy = 99;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.EAST;
+        gridBagConstraints.insets = new java.awt.Insets(6, 0, 0, 0);
+        formPane.add(countDuplicatePhotos, gridBagConstraints);
 
         getContentPane().add(formPane, java.awt.BorderLayout.NORTH);
 
@@ -317,8 +326,9 @@ public class DummyClient extends javax.swing.JFrame {
             req.setLongitudeTo(((Number) longitudeTo.getValue()).doubleValue());
             req.setTimeFrom((Date) timeFrom.getValue());
             req.setTimeTo((Date) timeTo.getValue());
+            req.setCountDuplicatePhotos(countDuplicatePhotos.isSelected());
             
-            Socket s = new Socket(host.getText(), (Integer) port.getValue());
+            Socket s = new Socket(host.getText(), ((Number) port.getValue()).intValue());
             long start = System.currentTimeMillis();
             OutputStream out = s.getOutputStream();
             System.out.println("Req "+Request.fromObject("locationStats", req).toString());
@@ -373,6 +383,7 @@ public class DummyClient extends javax.swing.JFrame {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JCheckBox countDuplicatePhotos;
     private javax.swing.JLabel durationLabel;
     private javax.swing.JPanel formPane;
     private javax.swing.JFormattedTextField host;
