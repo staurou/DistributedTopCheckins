@@ -9,9 +9,10 @@ public class DataSource {
     final com.mysql.jdbc.jdbc2.optional.MysqlDataSource ds;
     final String getCheckinsOrderByPoiSql = 
             "SELECT * FROM checkins"
-            + " WRERE (latitude BETWEEN ? AND ?)"
-            + " AND (longtidute BETWEEN ? AND ?)"
-            + " AND (time BETWEEN ? AND ?);";
+            + " WHERE (latitude BETWEEN ? AND ?)"
+            + " AND (longitude BETWEEN ? AND ?)"
+            + " AND (time BETWEEN ? AND ?)"
+            + " ORDER BY poi, user, time;";
     
     
     public DataSource(String host, String dbName, String username, String password) throws SQLException {
@@ -33,18 +34,18 @@ public class DataSource {
             stat.setDouble(2, latiduteTo);
             stat.setDouble(3, longtiduteFrom);
             stat.setDouble(4, longtiduteTo);
-            stat.setTimestamp(5, new Timestamp(timeFrom.getTime()));
-            stat.setTimestamp(6, new Timestamp(timeTo.getTime()));
+            stat.setTimestamp(5, timeFrom!=null ? new Timestamp(timeFrom.getTime()) : null);
+            stat.setTimestamp(6, timeTo!=null ? new Timestamp(timeTo.getTime()) : null);
             
-            ResultSet rs = stat.executeQuery();
-            while (rs.next()) {
-                list.add(new Checkin(rs.getInt("id"), rs.getInt("user"), rs.getString("POI"),
-                        rs.getString("POI_name"), rs.getString("POI_category"),
-                        rs.getInt("POI_category_id"), rs.getDouble("latitude"),
-                        rs.getDouble("longitude"), new java.util.Date(rs.getTimestamp("time").getTime()),
-                        rs.getString("photos")));
+            try (ResultSet rs = stat.executeQuery()) {
+                while (rs.next()) {
+                    list.add(new Checkin(rs.getInt("id"), rs.getInt("user"), rs.getString("POI"),
+                            rs.getString("POI_name"), rs.getString("POI_category"),
+                            rs.getInt("POI_category_id"), rs.getDouble("latitude"),
+                            rs.getDouble("longitude"), new java.util.Date(rs.getTimestamp("time").getTime()),
+                            rs.getString("photos")));
+                }
             }
-            rs.close();
         } catch (SQLException ex) {
             throw new IllegalStateException("Could not connect to database", ex);
         }

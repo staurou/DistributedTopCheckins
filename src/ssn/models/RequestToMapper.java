@@ -9,6 +9,9 @@ public class RequestToMapper implements Cloneable {
     private LocationStatsRequest locationStatsRequest;
     private int mapperId;
 
+    public RequestToMapper() {
+    }
+
     public RequestToMapper(long requestId, int mappersCount,
             LocationStatsRequest locationStatsRequest) {
         this.requestId = requestId;
@@ -49,7 +52,7 @@ public class RequestToMapper implements Cloneable {
     }
     
     
-    public List<LocationStatsRequest> getMySubRequest() {
+    public List<LocationStatsRequest> mySubRequest() {
         LocationStatsRequest part = new LocationStatsRequest();
         part.setTimeFrom(locationStatsRequest.getTimeFrom());
         part.setTimeTo(locationStatsRequest.getTimeTo());

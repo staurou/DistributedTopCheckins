@@ -6,9 +6,8 @@ import java.io.IOException;
 import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public class Utils {
     private static final int DEFAULT_BUFFER_SIZE = 256;
@@ -27,11 +26,11 @@ public class Utils {
     public static <A> void readAll(AsynchronousSocketChannel chanel, A attachment,
             DataHandler<A> handler, ByteBuffer buffer) {
         ByteBuffer b;
-        if (buffer == null) {
-            b = ByteBuffer.allocateDirect(DEFAULT_BUFFER_SIZE);
-        } else {
-            b = buffer;
-        }
+//        if (buffer == null) {
+            b = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
+//        } else {
+//            b = buffer;
+//        }
         final StringBuilder sb = new StringBuilder(b.capacity());
         b.clear();
         chanel.read(b, attachment, new CompletionHandler<Integer, A>() {
@@ -41,7 +40,7 @@ public class Utils {
                     handler.handleData(sb.toString(), attachment);
                     return;
                 }
-                sb.append(b.asCharBuffer(), 0, b.position()-0);
+                sb.append(new String(b.array(), 0, bytesRead, StandardCharsets.UTF_8));
                 b.clear();
                 chanel.read(b, attachment, this);
             }
@@ -210,5 +209,33 @@ public class Utils {
         } else {
             return null;
         }
+    }
+    
+    public static <T, TO extends T> void addSortedIfTop(TO obj, List<T> list, Comparator<? super T> cmp, int n) {
+        if (list.size() > n && cmp.compare(list.get(list.size()-1), obj) >= 0) {
+            return;
+        }
+        boolean added = false;
+        if (list instanceof RandomAccess) {
+            for (int i = list.size()-1; i >= 0; i--) {
+                if (cmp.compare(list.get(i), obj) >= 0) {
+                    list.add(i+1, obj);
+                    added = true;
+                    break;
+                }
+            }
+        } else {
+            ListIterator<T> it = list.listIterator(list.size());
+            while (it.hasPrevious()) {
+                if (cmp.compare(it.previous(), obj) >= 0) {
+                    it.next();
+                    it.add(obj);
+                    added = true;
+                    break;
+                }
+            }
+        }
+        if (!added) list.add(0, obj);
+        if (list.size() > n) list.remove(list.size()-1);
     }
 }

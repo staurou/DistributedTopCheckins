@@ -31,13 +31,13 @@ public class Mapper {
     private SocketAddress reducerAddress;
     
     public void initialize(int port, String masterAddress, SocketAddress reducerAddress) throws IOException, SQLException {
-        ds = new DataSource("localhost",  "test", "", "");
+        ds = new DataSource(DEFAULT_DATASOURCE_HOST,  DEFAULT_DATASOURCE_SCHEMA, DEFAULT_DATASOURCE_USERNAME, DEFAULT_DATASOURCE_PASSWORD);
         
         this.reducerAddress = reducerAddress;
         
         channelGroup = AsynchronousChannelGroup.withThreadPool(Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()));
         serverChannel = AsynchronousServerSocketChannel.open(channelGroup);
-        serverChannel.bind(new InetSocketAddress(5491));
+        serverChannel.bind(new InetSocketAddress(port));
         serverChannel.accept(null, new CompletionHandler<AsynchronousSocketChannel, Void>() {
             @Override public void completed(AsynchronousSocketChannel result, Void attachment) {
                 serverChannel.accept(null, this);
@@ -67,7 +67,7 @@ public class Mapper {
     }
     
     private void onConnection(AsynchronousSocketChannel channel) {
-        final ByteBuffer buffer = ByteBuffer.allocateDirect(356);
+//        final ByteBuffer buffer = ByteBuffer.allocateDirect(356);
         readAll(channel, null, new Utils.DataHandler<Void>() {
             @Override
             public void handleData(String data, Void id) {
@@ -91,12 +91,12 @@ public class Mapper {
                 exc.printStackTrace();
                 writeJsonAndClose(channel, new ErrorReply(exc.getMessage(), 500), null);
             }
-        }, buffer);
+        }, null);
     }
     
     private void sendToReducer(RequestToReducer result) throws IOException {
         connectWriteJsonClose(reducerAddress,
-            Request.fromObject("locationStats", reducerAddress),
+            Request.fromObject("locationStats", result),
             new SuccessHandler<Request>() {
                 @Override public void success(Request data) {
                     System.out.println("Sent result to reducer. Request id "+result.getRequestId());
@@ -117,7 +117,7 @@ public class Mapper {
                 // concurrently request checkins of areas from db
                 return threadPool.submit(() -> {
                     final List<Checkin> areaCheckins = ds.getCheckinsOrderByPoi(
-                            area.getLongitudeFrom(), area.getLatitudeTo(),
+                            area.getLatitudeFrom(), area.getLatitudeTo(),
                             area.getLongitudeFrom(), area.getLongitudeTo(),
                             area.getTimeFrom(), area.getTimeTo());
                     synchronized (checkins) {
@@ -141,15 +141,15 @@ public class Mapper {
     }
     
     private RequestToReducer map(RequestToMapper requestToMapper) {
-        final List<List<Checkin>> checkins = fetchCheckinsOfAreas(requestToMapper.getMySubRequest());
-        final List<PoiStats> pois = new LinkedList<>();
+        final List<List<Checkin>> checkins = fetchCheckinsOfAreas(requestToMapper.mySubRequest());
+        final List<PoiStats> pois = new ArrayList<>();
         
         // because checkins are properlly sorted, duplicates must be subsequent
         final Checkin[] prev = {null};
         Predicate<Checkin> duplicateRemover = checkin -> {
             boolean isDuplicate = prev[0] != null && isDuplicate(checkin, prev[0]);
             prev[0] = checkin;
-            return isDuplicate;
+            return !isDuplicate;
         };
         checkins.parallelStream().forEach(areaCheckins -> {  // loop over areas
             final PoiStats[] currentPoi = {null};  // wrap current poi in an array to ba able to assign to it from lambda
@@ -159,17 +159,20 @@ public class Mapper {
                     if (currentPoi[0] != null && Objects.equals(currentPoi[0].getPoi(), checkin.getPoi())) { // checkin of the same poi
                         currentPoi[0].setCount(currentPoi[0].getCount()+1);
                     } else { // poi has no more checkins
-                        currentPoi[0] = new PoiStats(checkin.getPoi(), checkin.getPoiName(), checkin.getLatitude(), checkin.getLongitude(), 0);
-                        synchronized (pois) {
-                            pois.add(currentPoi[0]);
+                        if (currentPoi[0] != null) {
+                            synchronized (pois) {
+                                addSortedIfTop(currentPoi[0], pois, (poiA, poiB) ->  poiA.getCount()-poiB.getCount(), REDUCE_LIMIT);
+    //                            pois.add(currentPoi[0]);
+                            }
                         }
+                        currentPoi[0] = new PoiStats(checkin.getPoi(), checkin.getPoiName(), checkin.getLatitude(), checkin.getLongitude(), 1);
                     }
                 }
             );
         });
         
-        pois.sort((poiA, poiB) -> poiB.getCount() - poiA.getCount());
-        final int poiCount = max(REDUCE_LIMIT, pois.size());
+//        pois.sort((poiA, poiB) -> poiB.getCount() - poiA.getCount());
+        final int poiCount = min(REDUCE_LIMIT, pois.size());
         PoiStats[] poiArray = pois.subList(0, poiCount).toArray(new PoiStats[poiCount]);
         
         return new RequestToReducer(requestToMapper.getRequestId(), requestToMapper.getMappersCount(), poiArray);
@@ -196,7 +199,7 @@ public class Mapper {
         Mapper instance = new Mapper();
         
         Map<String, List<String>> options = parseArgs(args, Arrays.asList("-p", "-cp", "-m", "-r", "-h"));
-        if (options.containsKey("-h") || options.size() <= 1) {
+        if (options.containsKey("-h")) {
             System.out.println(USAGE);
             System.exit(0);
         }

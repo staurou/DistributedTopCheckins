@@ -1,29 +1,40 @@
 package dummyclient;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.awt.Color;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.text.DateFormat;
+import java.text.NumberFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
+import javax.swing.JFormattedTextField;
 import javax.swing.table.AbstractTableModel;
 import ssn.models.*;
 
 public class DummyClient extends javax.swing.JFrame {
 
-    ResultsModel resultsModel = new ResultsModel();
+    DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     
-    /**
-     * Creates new form DummyClient
-     */
+    private final ResultsModel resultsModel = new ResultsModel();
+    
     public DummyClient() {
         initComponents();
+        latitudeFrom.setValue(40.6);
+        longitudeFrom.setValue(-75.0);
+        latitudeTo.setValue(40.7);
+        longitudeTo.setValue(-74.0);
+        try {
+            timeFrom.setValue(dateFormat.parse("2012-04-03 00:00:00"));
+            timeTo.setValue(dateFormat.parse("2012-04-03 23:59:59"));
+        } catch (ParseException ex) {}
     }
 
     static class ResultsModel extends AbstractTableModel {
         private static final String[] COLUMNS = {"Poi", "Poi Name", "Latitude",
-        "Longitude", "Count"};
+        "Longitude", "Checkin Count"};
         
         private PoiStats[] data = {};
         
@@ -73,27 +84,35 @@ public class DummyClient extends javax.swing.JFrame {
 
         formPane = new javax.swing.JPanel();
         latitudeFromLabel = new javax.swing.JLabel();
-        latitudeFrom = new javax.swing.JFormattedTextField();
+        latitudeFrom = new JFormattedTextField( NumberFormat.getNumberInstance());
+        ;
         longitudeFromLabel = new javax.swing.JLabel();
-        longitudeFrom = new javax.swing.JFormattedTextField();
+        longitudeFrom = new JFormattedTextField( NumberFormat.getNumberInstance());
+        ;
         latitudeToLabel = new javax.swing.JLabel();
-        latitudeTo = new javax.swing.JFormattedTextField();
+        latitudeTo = new JFormattedTextField( NumberFormat.getNumberInstance());
+        ;
         longitudeToLabel = new javax.swing.JLabel();
-        longitudeTo = new javax.swing.JFormattedTextField();
+        longitudeTo = new JFormattedTextField( NumberFormat.getNumberInstance());
+        ;
         timeFromLabel = new javax.swing.JLabel();
         timeFrom = new javax.swing.JFormattedTextField();
         timeToLabel = new javax.swing.JLabel();
         timeTo = new javax.swing.JFormattedTextField();
-        search = new javax.swing.JButton();
+        timeFromHintLabel = new javax.swing.JLabel();
+        timeToHintLabel = new javax.swing.JLabel();
         hostLabel = new javax.swing.JLabel();
         host = new javax.swing.JFormattedTextField();
         portLabel = new javax.swing.JLabel();
         port = new javax.swing.JFormattedTextField();
+        search = new javax.swing.JButton();
+        durationLabel = new javax.swing.JLabel();
         resultsPane = new javax.swing.JPanel();
-        jScrollPane1 = new javax.swing.JScrollPane();
-        jTable1 = new javax.swing.JTable();
+        resultsScroll = new javax.swing.JScrollPane();
+        resultsTable = new javax.swing.JTable();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        setTitle("Distributed Top Checkins");
 
         formPane.setBorder(javax.swing.BorderFactory.createEmptyBorder(20, 25, 25, 20));
         formPane.setOpaque(false);
@@ -106,7 +125,6 @@ public class DummyClient extends javax.swing.JFrame {
         gridBagConstraints.weightx = 0.1;
         formPane.add(latitudeFromLabel, gridBagConstraints);
 
-        latitudeFrom.setFormatterFactory(new javax.swing.text.DefaultFormatterFactory(new javax.swing.text.NumberFormatter()));
         latitudeFrom.setMinimumSize(new java.awt.Dimension(100, 27));
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 1;
@@ -122,7 +140,6 @@ public class DummyClient extends javax.swing.JFrame {
         gridBagConstraints.weightx = 0.1;
         formPane.add(longitudeFromLabel, gridBagConstraints);
 
-        longitudeFrom.setFormatterFactory(new javax.swing.text.DefaultFormatterFactory(new javax.swing.text.NumberFormatter()));
         longitudeFrom.setMinimumSize(new java.awt.Dimension(100, 27));
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 1;
@@ -138,7 +155,6 @@ public class DummyClient extends javax.swing.JFrame {
         gridBagConstraints.weightx = 0.1;
         formPane.add(latitudeToLabel, gridBagConstraints);
 
-        latitudeTo.setFormatterFactory(new javax.swing.text.DefaultFormatterFactory(new javax.swing.text.NumberFormatter()));
         latitudeTo.setMinimumSize(new java.awt.Dimension(100, 27));
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 3;
@@ -154,7 +170,6 @@ public class DummyClient extends javax.swing.JFrame {
         gridBagConstraints.weightx = 0.1;
         formPane.add(longitudeToLabel, gridBagConstraints);
 
-        longitudeTo.setFormatterFactory(new javax.swing.text.DefaultFormatterFactory(new javax.swing.text.NumberFormatter()));
         longitudeTo.setMinimumSize(new java.awt.Dimension(100, 27));
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 3;
@@ -164,13 +179,15 @@ public class DummyClient extends javax.swing.JFrame {
         formPane.add(longitudeTo, gridBagConstraints);
 
         timeFromLabel.setText("Time From");
+        timeFromLabel.setToolTipText("yyyy-MM-dd HH:mm:ss");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridy = 4;
         gridBagConstraints.weightx = 0.1;
         gridBagConstraints.insets = new java.awt.Insets(14, 0, 0, 0);
         formPane.add(timeFromLabel, gridBagConstraints);
 
-        timeFrom.setFormatterFactory(new javax.swing.text.DefaultFormatterFactory(new javax.swing.text.DateFormatter(new java.text.SimpleDateFormat("yyyy-MM-dd  hh:mm:ss"))));
+        timeFrom.setFormatterFactory(new javax.swing.text.DefaultFormatterFactory(new javax.swing.text.DateFormatter(new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss"))));
+        timeFrom.setToolTipText("yyyy-MM-dd HH:mm:ss");
         timeFrom.setMinimumSize(new java.awt.Dimension(100, 27));
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridy = 4;
@@ -180,13 +197,15 @@ public class DummyClient extends javax.swing.JFrame {
         formPane.add(timeFrom, gridBagConstraints);
 
         timeToLabel.setText("Time To");
+        timeToLabel.setToolTipText("yyyy-MM-dd HH:mm:ss");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridy = 4;
         gridBagConstraints.weightx = 0.1;
         gridBagConstraints.insets = new java.awt.Insets(14, 0, 0, 0);
         formPane.add(timeToLabel, gridBagConstraints);
 
-        timeTo.setFormatterFactory(new javax.swing.text.DefaultFormatterFactory(new javax.swing.text.DateFormatter(new java.text.SimpleDateFormat("yyyy-MM-dd  hh:mm:ss"))));
+        timeTo.setFormatterFactory(new javax.swing.text.DefaultFormatterFactory(new javax.swing.text.DateFormatter(new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss"))));
+        timeTo.setToolTipText("yyyy-MM-dd HH:mm:ss");
         timeTo.setMinimumSize(new java.awt.Dimension(100, 27));
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridy = 4;
@@ -194,6 +213,64 @@ public class DummyClient extends javax.swing.JFrame {
         gridBagConstraints.weightx = 0.4;
         gridBagConstraints.insets = new java.awt.Insets(14, 0, 0, 0);
         formPane.add(timeTo, gridBagConstraints);
+
+        timeFromHintLabel.setFont(new java.awt.Font("Ubuntu", 2, 15)); // NOI18N
+        timeFromHintLabel.setForeground(new java.awt.Color(113, 113, 113));
+        timeFromHintLabel.setText("yyyy-MM-dd HH:mm:ss");
+        timeFromHintLabel.setToolTipText("yyyy-MM-dd HH:mm:ss");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 5;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.1;
+        formPane.add(timeFromHintLabel, gridBagConstraints);
+
+        timeToHintLabel.setFont(new java.awt.Font("Ubuntu", 2, 15)); // NOI18N
+        timeToHintLabel.setForeground(new java.awt.Color(113, 113, 113));
+        timeToHintLabel.setText("yyyy-MM-dd HH:mm:ss");
+        timeToHintLabel.setToolTipText("yyyy-MM-dd HH:mm:ss");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 3;
+        gridBagConstraints.gridy = 5;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.1;
+        formPane.add(timeToHintLabel, gridBagConstraints);
+
+        hostLabel.setText("Host");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridy = 6;
+        gridBagConstraints.weightx = 0.1;
+        gridBagConstraints.insets = new java.awt.Insets(16, 0, 0, 0);
+        formPane.add(hostLabel, gridBagConstraints);
+
+        host.setFormatterFactory(null);
+        host.setText("localhost");
+        host.setMinimumSize(new java.awt.Dimension(100, 27));
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridy = 6;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.weightx = 0.4;
+        gridBagConstraints.insets = new java.awt.Insets(16, 0, 0, 0);
+        formPane.add(host, gridBagConstraints);
+
+        portLabel.setText("Port");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridy = 6;
+        gridBagConstraints.weightx = 0.1;
+        gridBagConstraints.insets = new java.awt.Insets(16, 0, 0, 0);
+        formPane.add(portLabel, gridBagConstraints);
+
+        port.setFormatterFactory(new javax.swing.text.DefaultFormatterFactory(new javax.swing.text.NumberFormatter(new java.text.DecimalFormat("###0"))));
+        port.setText("25697");
+        port.setToolTipText("");
+        port.setMinimumSize(new java.awt.Dimension(100, 27));
+        port.setValue(25697);
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridy = 6;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.weightx = 0.4;
+        gridBagConstraints.insets = new java.awt.Insets(16, 0, 0, 0);
+        formPane.add(port, gridBagConstraints);
 
         search.setText("Search");
         search.addActionListener(new java.awt.event.ActionListener() {
@@ -209,71 +286,50 @@ public class DummyClient extends javax.swing.JFrame {
         gridBagConstraints.insets = new java.awt.Insets(20, 0, 0, 0);
         formPane.add(search, gridBagConstraints);
 
-        hostLabel.setText("Host");
+        durationLabel.setFont(new java.awt.Font("Ubuntu", 2, 15)); // NOI18N
         gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridy = 5;
-        gridBagConstraints.weightx = 0.1;
-        gridBagConstraints.insets = new java.awt.Insets(14, 0, 0, 0);
-        formPane.add(hostLabel, gridBagConstraints);
-
-        host.setFormatterFactory(null);
-        host.setMinimumSize(new java.awt.Dimension(100, 27));
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridy = 5;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
-        gridBagConstraints.weightx = 0.4;
-        gridBagConstraints.insets = new java.awt.Insets(14, 0, 0, 0);
-        formPane.add(host, gridBagConstraints);
-
-        portLabel.setText("Port");
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridy = 5;
-        gridBagConstraints.weightx = 0.1;
-        gridBagConstraints.insets = new java.awt.Insets(14, 0, 0, 0);
-        formPane.add(portLabel, gridBagConstraints);
-
-        port.setFormatterFactory(new javax.swing.text.DefaultFormatterFactory(new javax.swing.text.NumberFormatter(new java.text.DecimalFormat("###0"))));
-        port.setMinimumSize(new java.awt.Dimension(100, 27));
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridy = 5;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
-        gridBagConstraints.weightx = 0.4;
-        gridBagConstraints.insets = new java.awt.Insets(14, 0, 0, 0);
-        formPane.add(port, gridBagConstraints);
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        formPane.add(durationLabel, gridBagConstraints);
 
         getContentPane().add(formPane, java.awt.BorderLayout.NORTH);
 
+        resultsPane.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 5, 4, 5));
         resultsPane.setLayout(new java.awt.BorderLayout());
 
-        jScrollPane1.setBackground(Color.WHITE);
+        resultsTable.setModel(resultsModel);
+        resultsTable.setFillsViewportHeight(true);
+        resultsScroll.setViewportView(resultsTable);
 
-        jTable1.setModel(resultsModel);
-        jScrollPane1.setViewportView(jTable1);
-
-        resultsPane.add(jScrollPane1, java.awt.BorderLayout.CENTER);
+        resultsPane.add(resultsScroll, java.awt.BorderLayout.CENTER);
 
         getContentPane().add(resultsPane, java.awt.BorderLayout.CENTER);
 
-        pack();
+        setSize(new java.awt.Dimension(779, 538));
+        setLocationRelativeTo(null);
     }// </editor-fold>//GEN-END:initComponents
 
     private void searchActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_searchActionPerformed
         try {
             LocationStatsRequest req = new LocationStatsRequest();
-//            req.setLatitudeFrom((double) latitudeFrom.getValue());
-//            req.setLatitudeTo((double) latitudeTo.getValue());
-//            req.setLongitudeFrom((double) longitudeFrom.getValue());
-//            req.setLongitudeTo((double) longitudeTo.getValue());
-//            req.setTimeFrom((Date) timeFrom.getValue());
-//            req.setTimeTo((Date) timeTo.getValue());
+            req.setLatitudeFrom(((Number) latitudeFrom.getValue()).doubleValue());
+            req.setLongitudeFrom(((Number) longitudeFrom.getValue()).doubleValue());
+            req.setLatitudeTo(((Number) latitudeTo.getValue()).doubleValue());
+            req.setLongitudeTo(((Number) longitudeTo.getValue()).doubleValue());
+            req.setTimeFrom((Date) timeFrom.getValue());
+            req.setTimeTo((Date) timeTo.getValue());
             
-            Socket s = new Socket(host.getText(), ((Long) port.getValue()).intValue());
+            Socket s = new Socket(host.getText(), (Integer) port.getValue());
+            long start = System.currentTimeMillis();
             OutputStream out = s.getOutputStream();
+            System.out.println("Req "+Request.fromObject("locationStats", req).toString());
             out.write(Request.fromObject("locationStats", req).toString().getBytes());
-            out.close();
+//            out.close();
+            out.flush();
+            s.shutdownOutput();
             InputStream in = s.getInputStream();
             ObjectMapper m = new ObjectMapper();
             PoiStats[] responce = m.readValue(in, PoiStats[].class);
+            durationLabel.setText(((System.currentTimeMillis()-start)/1000.0)+"s");
             resultsModel.setData(responce);
             in.close();
         } catch (IOException ex) {
@@ -317,11 +373,10 @@ public class DummyClient extends javax.swing.JFrame {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JLabel durationLabel;
     private javax.swing.JPanel formPane;
     private javax.swing.JFormattedTextField host;
     private javax.swing.JLabel hostLabel;
-    private javax.swing.JScrollPane jScrollPane1;
-    private javax.swing.JTable jTable1;
     private javax.swing.JFormattedTextField latitudeFrom;
     private javax.swing.JLabel latitudeFromLabel;
     private javax.swing.JFormattedTextField latitudeTo;
@@ -333,10 +388,14 @@ public class DummyClient extends javax.swing.JFrame {
     private javax.swing.JFormattedTextField port;
     private javax.swing.JLabel portLabel;
     private javax.swing.JPanel resultsPane;
+    private javax.swing.JScrollPane resultsScroll;
+    private javax.swing.JTable resultsTable;
     private javax.swing.JButton search;
     private javax.swing.JFormattedTextField timeFrom;
+    private javax.swing.JLabel timeFromHintLabel;
     private javax.swing.JLabel timeFromLabel;
     private javax.swing.JFormattedTextField timeTo;
+    private javax.swing.JLabel timeToHintLabel;
     private javax.swing.JLabel timeToLabel;
     // End of variables declaration//GEN-END:variables
 }

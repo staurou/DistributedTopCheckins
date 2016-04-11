@@ -73,7 +73,7 @@ public class Reducer {
     private void onConnection(AsynchronousSocketChannel channel) {
         
         
-        final ByteBuffer buffer = ByteBuffer.allocateDirect(356);
+        final ByteBuffer buffer = ByteBuffer.allocate(356);
         readAll(channel, null, new Utils.DataHandler<Void>() {
             @Override
             public void handleData(String data, Void id) {
@@ -101,7 +101,7 @@ public class Reducer {
     }
         
     private void handleMapperRequest(RequestToReducer req) throws IOException {
-        if (req.getMapperCount() <= 1)
+        if (req.getMapperCount() <= 0)
             throw new IllegalStateException("Request from mapper "+req.getRequestId()
                     +" states that mappers count is "+req.getMapperCount()+" <= 0");
 
@@ -131,13 +131,18 @@ public class Reducer {
         
     private PoiStats[] reduce(List<RequestToReducer> mapperRequests, int limit) {
         // put all pois in a sorted set, sorting by checkin count
-        TreeSet<PoiStats> sortedSet = new TreeSet<>((PoiStats o1, PoiStats o2) -> o2.getCount() - o1.getCount());
+        TreeSet<PoiStats> sortedSet = new TreeSet<>((PoiStats o1, PoiStats o2) -> {
+                int countDiff = o2.getCount() - o1.getCount();
+                return countDiff != 0
+                        ? countDiff
+                        : o1.getPoi().compareTo(o2.getPoi());
+            });
         mapperRequests.parallelStream()
                 .map(req -> asList(req.getPoiStats()))
                 .sequential().forEach(sortedSet::addAll); // sequential because TreeSet is not thread safe
         
         // select the top pois from the sorted set
-        int responceSize = Math.max(limit, sortedSet.size());
+        int responceSize = Math.min(limit, sortedSet.size());
         PoiStats[] result = new PoiStats[responceSize];
         int i = 0;
         for (PoiStats poi : sortedSet) {
@@ -149,6 +154,7 @@ public class Reducer {
     }
     
     private void sendResponceToMaster(long requestId, PoiStats[] result) throws IOException {
+        System.out.println("Resp size "+result.length);
         Utils.connectWriteJsonClose(new InetSocketAddress(masterAddress, masterPort),
             Request.fromObject("locationStatsSendResponce", new ReplyFromReducer(requestId, result)),
             new SuccessHandler<Request>() {

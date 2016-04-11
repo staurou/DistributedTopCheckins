@@ -80,7 +80,7 @@ public class MapReduceMaster {
         });
         
         controlChannel = AsynchronousServerSocketChannel.open(channelGroup);
-        controlChannel.bind(new InetSocketAddress(reducerPort));
+        controlChannel.bind(new InetSocketAddress(controlPort));
         controlChannel.accept(null, new CompletionHandler<AsynchronousSocketChannel, Void>() {
             @Override public void completed(AsynchronousSocketChannel result, Void attachment) {
                 controlChannel.accept(null, this);
@@ -119,7 +119,7 @@ public class MapReduceMaster {
     
     private void onNewRequestConnection(AsynchronousSocketChannel channel) {
         long id = requestIds.incrementAndGet();
-        final ByteBuffer buffer = ByteBuffer.allocateDirect(356);
+//        final ByteBuffer buffer = ByteBuffer.allocate(356);
         readAll(channel, id, new DataHandler<Long>() {
             @Override
             public void handleData(String data, Long id) {
@@ -144,7 +144,7 @@ public class MapReduceMaster {
                 exc.printStackTrace();
                 writeJsonAndClose(channel, new ErrorReply(exc.getMessage(), 500), null);
             }
-        }, buffer);
+        }, null);
     }
     
     private void sendToMappers(long id, LocationStatsRequest req) throws IOException {
@@ -155,7 +155,8 @@ public class MapReduceMaster {
             reqToMap.setMapperId(mapperNumber);
             try {
                 byte[] reqToMapB;
-                reqToMapB = new ObjectMapper().writeValueAsString(Request.fromObject("mapLocationStatsRequest", reqToMap)).getBytes();
+                reqToMapB = new ObjectMapper().writeValueAsString(Request.fromObject("locationStats", reqToMap)).getBytes();
+                System.out.println("Sending request #"+id+" to mapper #"+mapperNumber);
                 connectWriteClose(new InetSocketAddress(mapper.host, mapper.port),
                     reqToMapB,
                     new SuccessHandler<byte[]>() {
@@ -168,7 +169,7 @@ public class MapReduceMaster {
                         }
                     },
                     channelGroup);
-            } catch (JsonProcessingException ex) {
+            } catch (Exception ex) {
                 ex.printStackTrace();
             }
         }
@@ -180,9 +181,9 @@ public class MapReduceMaster {
             @Override
             public void handleData(String data, Void attachment) {
                 try {
-                  final ObjectMapper m = new ObjectMapper();
-                  Request req = m.readValue(data, Request.class );
-                  
+                    System.out.println("Control request data "+data);
+                    final ObjectMapper m = new ObjectMapper();
+                    Request req = m.readValue(data, Request.class );
                 if ("locationStatsSendResponce".equals(req.getAction())) {
                         locationStatsSendResponce(req.getBodyAs(ReplyFromReducer.class));
                     } else {
@@ -206,6 +207,7 @@ public class MapReduceMaster {
     
     private void locationStatsSendResponce(ReplyFromReducer rep) {
          long id = rep.getRequestId();
+         System.out.println("resp len "+rep.getReducerReply().length);
          AsynchronousSocketChannel ch = initialClientRequestChannels.remove(id);
          if (ch != null) {
              writeJsonAndClose(ch, rep.getReducerReply(), new SuccessHandler<PoiStats[]>() {
