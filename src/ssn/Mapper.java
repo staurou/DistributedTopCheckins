@@ -1,10 +1,5 @@
 package ssn;
 
-import ssn.models.RequestToMapper;
-import ssn.models.LocationStatsRequest;
-import ssn.models.Checkin;
-import ssn.models.PoiStats;
-import ssn.models.RequestToReducer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.sql.SQLException;
@@ -13,7 +8,6 @@ import java.util.concurrent.*;
 import java.util.function.*;
 import static java.lang.Math.*;
 import java.net.*;
-import java.nio.ByteBuffer;
 import java.nio.channels.*;
 import static java.util.Arrays.asList;
 import java.util.stream.Stream;
@@ -24,7 +18,6 @@ import ssn.models.*;
 public class Mapper {
     
     private DataSource ds;
-    private final ExecutorService threadPool = Executors.newCachedThreadPool();
     
     private AsynchronousServerSocketChannel serverChannel;
     private AsynchronousChannelGroup channelGroup;
@@ -139,6 +132,9 @@ public class Mapper {
             }
         });
         checkins.clear();
+        if (currentPoi[0] != null) {
+            addSortedIfTop(currentPoi[0], pois, (poiA, poiB) ->  poiA.getCount()-poiB.getCount(), REDUCE_LIMIT);
+        }
         
         final int poiCount = min(REDUCE_LIMIT, pois.size());
         PoiStats[] poiArray = pois.subList(0, poiCount).toArray(new PoiStats[poiCount]);
