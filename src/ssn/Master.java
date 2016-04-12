@@ -144,7 +144,7 @@ public class Master {
                 exc.printStackTrace();
                 writeJsonAndClose(channel, new ErrorReply(exc.getMessage(), 500), null);
             }
-        }, null);
+        });
     }
     
     private void sendToMappers(long id, LocationStatsRequest req) throws IOException {
@@ -202,7 +202,7 @@ public class Master {
             }
 
            
-        }, buffer);
+        });
     }
     
     private void locationStatsSendResponce(ReplyFromReducer rep) {

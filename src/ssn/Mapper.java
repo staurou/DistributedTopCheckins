@@ -85,7 +85,7 @@ public class Mapper {
                 exc.printStackTrace();
                 writeJsonAndClose(channel, new ErrorReply(exc.getMessage(), 500), null);
             }
-        }, null);
+        });
     }
     
     private void sendToReducer(RequestToReducer result) throws IOException {

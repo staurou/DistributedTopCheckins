@@ -23,17 +23,12 @@ public class Utils {
     }
     
     
-    public static <A> void readAll(AsynchronousSocketChannel chanel, A attachment,
-            DataHandler<A> handler, ByteBuffer buffer) {
-        ByteBuffer b;
-//        if (buffer == null) {
-            b = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
-//        } else {
-//            b = buffer;
-//        }
+    public static <A> void readAll(AsynchronousSocketChannel channel, A attachment,
+            DataHandler<A> handler) {
+        ByteBuffer b = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
         final StringBuilder sb = new StringBuilder(b.capacity());
-        b.clear();
-        chanel.read(b, attachment, new CompletionHandler<Integer, A>() {
+        
+        channel.read(b, attachment, new CompletionHandler<Integer, A>() {
             @Override
             public void completed(Integer bytesRead, A attachment) {
                 if (bytesRead < 0) {
@@ -42,7 +37,7 @@ public class Utils {
                 }
                 sb.append(new String(b.array(), 0, bytesRead, StandardCharsets.UTF_8));
                 b.clear();
-                chanel.read(b, attachment, this);
+                channel.read(b, attachment, this);
             }
 
             @Override
