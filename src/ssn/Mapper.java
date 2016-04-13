@@ -61,7 +61,6 @@ public class Mapper {
     }
     
     private void onConnection(AsynchronousSocketChannel channel) {
-//        final ByteBuffer buffer = ByteBuffer.allocateDirect(356);
         readAll(channel, null, new Utils.DataHandler<Void>() {
             @Override
             public void handleData(String data, Void id) {

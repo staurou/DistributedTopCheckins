@@ -119,7 +119,6 @@ public class Master {
     
     private void onNewRequestConnection(AsynchronousSocketChannel channel) {
         long id = requestIds.incrementAndGet();
-//        final ByteBuffer buffer = ByteBuffer.allocate(356);
         readAll(channel, id, new DataHandler<Long>() {
             @Override
             public void handleData(String data, Long id) {
@@ -176,7 +175,6 @@ public class Master {
     }
     
     private void receiveControlRequest(AsynchronousSocketChannel channel){
-        final ByteBuffer buffer = ByteBuffer.allocateDirect(356);
         readAll(channel, null, new DataHandler<Void>() {
             @Override
             public void handleData(String data, Void attachment) {

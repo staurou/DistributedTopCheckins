@@ -71,9 +71,6 @@ public class Reducer {
     }
     
     private void onConnection(AsynchronousSocketChannel channel) {
-        
-        
-        final ByteBuffer buffer = ByteBuffer.allocate(356);
         readAll(channel, null, new Utils.DataHandler<Void>() {
             @Override
             public void handleData(String data, Void id) {
@@ -139,9 +136,9 @@ public class Reducer {
                         ? countDiff
                         : o1.getPoi().compareTo(o2.getPoi());
             });
-        mapperRequests.parallelStream()
+        mapperRequests.stream()
                 .map(req -> asList(req.getPoiStats()))
-                .sequential().forEach(sortedSet::addAll); // sequential because TreeSet is not thread safe
+                .forEach(sortedSet::addAll); // sequential because TreeSet is not thread safe
         
         // select the top pois from the sorted set
         int responceSize = Math.min(limit, sortedSet.size());
@@ -175,13 +172,13 @@ public class Reducer {
     }
     
 
-        static final String USAGE = "REDUCER USAGE\n"
-            + "Arguments: [-p PORT]"
-            + " -m MAPPER_ADDRESS [MAPPER_ADDRESS]..."
-            + " [-s MASTER_ADDRESS [MASTER_CONTROL_PORT]]"
-            + "\nDefault PORT is "+DEFAULT_REDUCER_PORT
-            + ",\nDefault MASTER_ADDRESS is localhost"
-            + ",\nDefault MASTER_CONTROL_PORT is "+DEFAULT_MASTER_CONTROL_PORT;
+    static final String USAGE = "REDUCER USAGE\n"
+        + "Arguments: [-p PORT]"
+        + " -m MAPPER_ADDRESS [MAPPER_ADDRESS]..."
+        + " [-s MASTER_ADDRESS [MASTER_CONTROL_PORT]]"
+        + "\nDefault PORT is "+DEFAULT_REDUCER_PORT
+        + ",\nDefault MASTER_ADDRESS is localhost"
+        + ",\nDefault MASTER_CONTROL_PORT is "+DEFAULT_MASTER_CONTROL_PORT;
     
     public static void main(String[] args) throws IOException {
         Reducer instance = new Reducer();

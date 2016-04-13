@@ -43,11 +43,11 @@ public class DataSource {
             Statement stat = conn.createStatement();
             ResultSet rs = stat.executeQuery(statement);) {
             while (rs.next()) {
-                list.add(new Checkin(rs.getInt("id"), rs.getInt("user"), rs.getString("POI"),
-                        rs.getString("POI_name"), /*rs.getString("POI_category")*/null,
+                list.add(new Checkin(rs.getInt("id"), rs.getInt("user"), rs.getString("POI").intern(),
+                        rs.getString("POI_name").intern(), /*rs.getString("POI_category")*/null,
                         rs.getInt("POI_category_id")/*-1*/, rs.getDouble("latitude"),
                         rs.getDouble("longitude"), new java.util.Date(rs.getTimestamp("time").getTime()),
-                        rs.getString("photos")));
+                        rs.getString("photos").intern()));
             }
             
         } catch (SQLException ex) {
