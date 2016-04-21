@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<ClassDiagram name="Constants">
+  <ClassDiagramComponents>
+    <Interface name="Constants" package="ssn" visibility="public" xPosition="20.0" yPosition="20.0">
+      <Methods/>
+    </Interface>
+  </ClassDiagramComponents>
+  <ClassDiagramRelations/>
+</ClassDiagram>

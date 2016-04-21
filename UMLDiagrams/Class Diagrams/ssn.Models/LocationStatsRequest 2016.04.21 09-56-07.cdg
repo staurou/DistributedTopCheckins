@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<ClassDiagram name="LocationStatsRequest">
+  <ClassDiagramComponents>
+    <Class name="LocationStatsRequest" package="ssn.models" visibility="public" xPosition="20.0" yPosition="20.0">
+      <Fields>
+        <Field name="longitudeFrom" type="double" visibility="private"/>
+        <Field name="longitudeTo" type="double" visibility="private"/>
+        <Field name="latitudeFrom" type="double" visibility="private"/>
+        <Field name="latitudeTo" type="double" visibility="private"/>
+        <Field name="timeFrom" type="Date" visibility="private"/>
+        <Field name="timeTo" type="Date" visibility="private"/>
+        <Field name="countDuplicatePhotos" type="boolean" visibility="private"/>
+      </Fields>
+      <Constructors/>
+      <Methods>
+        <Method name="getLongitudeFrom" returnType="double" visibility="public"/>
+        <Method name="setLongitudeFrom" returnType="void" visibility="public">
+          <Argument type="double" name="longitudeFrom"/>
+        </Method>
+        <Method name="getLongitudeTo" returnType="double" visibility="public"/>
+        <Method name="setLongitudeTo" returnType="void" visibility="public">
+          <Argument type="double" name="longitudeTo"/>
+        </Method>
+        <Method name="getLatitudeFrom" returnType="double" visibility="public"/>
+        <Method name="setLatitudeFrom" returnType="void" visibility="public">
+          <Argument type="double" name="latitudeFrom"/>
+        </Method>
+        <Method name="getLatitudeTo" returnType="double" visibility="public"/>
+        <Method name="setLatitudeTo" returnType="void" visibility="public">
+          <Argument type="double" name="latitudeTo"/>
+        </Method>
+        <Method name="getTimeFrom" returnType="Date" visibility="public"/>
+        <Method name="setTimeFrom" returnType="void" visibility="public">
+          <Argument type="Date" name="timeFrom"/>
+        </Method>
+        <Method name="getTimeTo" returnType="Date" visibility="public"/>
+        <Method name="setTimeTo" returnType="void" visibility="public">
+          <Argument type="Date" name="timeTo"/>
+        </Method>
+        <Method name="isCountDuplicatePhotos" returnType="boolean" visibility="public"/>
+        <Method name="setCountDuplicatePhotos" returnType="void" visibility="public">
+          <Argument type="boolean" name="countDuplicatePhotos"/>
+        </Method>
+      </Methods>
+    </Class>
+  </ClassDiagramComponents>
+  <ClassDiagramRelations/>
+</ClassDiagram>

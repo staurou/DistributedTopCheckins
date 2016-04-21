@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<ClassDiagram name="PoiStats">
+  <ClassDiagramComponents>
+    <Class name="PoiStats" package="ssn.models" visibility="public" xPosition="20.0" yPosition="20.0">
+      <Fields>
+        <Field name="poi" type="String" visibility="private"/>
+        <Field name="poiName" type="String" visibility="private"/>
+        <Field name="latitude" type="double" visibility="private"/>
+        <Field name="longitude" type="double" visibility="private"/>
+        <Field name="count" type="int" visibility="private"/>
+      </Fields>
+      <Constructors>
+        <Constructor visibility="public"/>
+        <Constructor visibility="public">
+          <Argument type="String" name="poi"/>
+          <Argument type="String" name="poiName"/>
+          <Argument type="double" name="latitude"/>
+          <Argument type="double" name="longitude"/>
+          <Argument type="int" name="count"/>
+        </Constructor>
+      </Constructors>
+      <Methods>
+        <Method name="getLongitude" returnType="double" visibility="public"/>
+        <Method name="setLongitude" returnType="void" visibility="public">
+          <Argument type="double" name="longitude"/>
+        </Method>
+        <Method name="getLatitude" returnType="double" visibility="public"/>
+        <Method name="setLatitude" returnType="void" visibility="public">
+          <Argument type="double" name="latitude"/>
+        </Method>
+        <Method name="getCount" returnType="int" visibility="public"/>
+        <Method name="setCount" returnType="void" visibility="public">
+          <Argument type="int" name="count"/>
+        </Method>
+        <Method name="getPoi" returnType="String" visibility="public"/>
+        <Method name="setPoi" returnType="void" visibility="public">
+          <Argument type="String" name="poi"/>
+        </Method>
+        <Method name="getPoiName" returnType="String" visibility="public"/>
+        <Method name="setPoiName" returnType="void" visibility="public">
+          <Argument type="String" name="poiName"/>
+        </Method>
+      </Methods>
+    </Class>
+  </ClassDiagramComponents>
+  <ClassDiagramRelations/>
+</ClassDiagram>

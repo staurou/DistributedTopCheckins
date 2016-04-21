@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<ClassDiagram name="RequestToMapper">
+  <ClassDiagramComponents>
+    <Class name="RequestToMapper" package="ssn.models" visibility="public" xPosition="20.0" yPosition="20.0">
+      <Fields>
+        <Field name="requestId" type="long" visibility="private"/>
+        <Field name="mappersCount" type="int" visibility="private"/>
+        <Field name="locationStatsRequest" type="LocationStatsRequest" visibility="private"/>
+        <Field name="mapperId" type="int" visibility="private"/>
+      </Fields>
+      <Constructors>
+        <Constructor visibility="public"/>
+        <Constructor visibility="public">
+          <Argument type="long" name="requestId"/>
+          <Argument type="int" name="mappersCount"/>
+          <Argument type="LocationStatsRequest" name="locationStatsRequest"/>
+        </Constructor>
+      </Constructors>
+      <Methods>
+        <Method name="getRequestId" returnType="long" visibility="public"/>
+        <Method name="setRequestId" returnType="void" visibility="public">
+          <Argument type="long" name="requestId"/>
+        </Method>
+        <Method name="getMappersCount" returnType="int" visibility="public"/>
+        <Method name="setMappersCount" returnType="void" visibility="public">
+          <Argument type="int" name="mappersCount"/>
+        </Method>
+        <Method name="getLocationStatsRequest" returnType="LocationStatsRequest" visibility="public"/>
+        <Method name="setLocationStatsRequest" returnType="void" visibility="public">
+          <Argument type="LocationStatsRequest" name="locationStatsRequest"/>
+        </Method>
+        <Method name="getMapperId" returnType="int" visibility="public"/>
+        <Method name="setMapperId" returnType="void" visibility="public">
+          <Argument type="int" name="mapperId"/>
+        </Method>
+      </Methods>
+    </Class>
+  </ClassDiagramComponents>
+  <ClassDiagramRelations/>
+</ClassDiagram>

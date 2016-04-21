@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<ClassDiagram name="ReplyFromReducer">
+  <ClassDiagramComponents>
+    <Class name="ReplyFromReducer" package="ssn.models" visibility="public" xPosition="20.0" yPosition="20.0">
+      <Fields>
+        <Field name="requestId" type="long" visibility="private"/>
+        <Field name="reducerReply" type="PoiStats[]" visibility="package"/>
+      </Fields>
+      <Constructors>
+        <Constructor visibility="public"/>
+        <Constructor visibility="public">
+          <Argument type="long" name="requestId"/>
+          <Argument type="PoiStats[]" name="reducerReply"/>
+        </Constructor>
+      </Constructors>
+      <Methods>
+        <Method name="getRequestId" returnType="long" visibility="public"/>
+        <Method name="setRequestId" returnType="void" visibility="public">
+          <Argument type="long" name="requestId"/>
+        </Method>
+        <Method name="getReducerReply" returnType="PoiStats[]" visibility="public"/>
+        <Method name="setReducerReply" returnType="void" visibility="public">
+          <Argument type="PoiStats[]" name="reducerReply"/>
+        </Method>
+      </Methods>
+    </Class>
+  </ClassDiagramComponents>
+  <ClassDiagramRelations/>
+</ClassDiagram>

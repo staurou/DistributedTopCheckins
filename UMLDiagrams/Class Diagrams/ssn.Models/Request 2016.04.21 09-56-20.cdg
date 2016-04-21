@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<ClassDiagram name="Request">
+  <ClassDiagramComponents>
+    <Class name="Request" package="ssn.models" visibility="public" xPosition="20.0" yPosition="20.0">
+      <Fields>
+        <Field name="action" type="String" visibility="private"/>
+        <Field name="body" type="String" visibility="private"/>
+      </Fields>
+      <Constructors>
+        <Constructor visibility="public"/>
+        <Constructor visibility="public">
+          <Argument type="String" name="action"/>
+          <Argument type="String" name="body"/>
+        </Constructor>
+      </Constructors>
+      <Methods>
+        <Method name="getAction" returnType="String" visibility="public"/>
+        <Method name="setAction" returnType="void" visibility="public">
+          <Argument type="String" name="action"/>
+        </Method>
+        <Method name="getBody" returnType="String" visibility="public"/>
+        <Method name="getBodyAs" returnType="T" visibility="public">
+          <Argument type="Class&lt;T&gt;" name="clazz"/>
+        </Method>
+        <Method name="setBody" returnType="void" visibility="public">
+          <Argument type="String" name="body"/>
+        </Method>
+        <Method name="toString" returnType="String" visibility="public"/>
+        <Method name="fromObject" returnType="Request" visibility="public" isStatic="true">
+          <Argument type="String" name="action"/>
+          <Argument type="Object" name="body"/>
+        </Method>
+      </Methods>
+    </Class>
+  </ClassDiagramComponents>
+  <ClassDiagramRelations>
+    <UseRelation source="ssn.models.Request" target="ssn.models.Request" sourceCardinality="1..1" targetCardinality="1..1"/>
+  </ClassDiagramRelations>
+</ClassDiagram>

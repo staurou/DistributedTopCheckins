@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<ClassDiagram name="ErrorReply">
+  <ClassDiagramComponents>
+    <Class name="ErrorReply" package="ssn.models" visibility="public" xPosition="20.0" yPosition="20.0">
+      <Fields>
+        <Field name="error" type="String" visibility="private"/>
+        <Field name="code" type="int" visibility="private"/>
+      </Fields>
+      <Constructors>
+        <Constructor visibility="public"/>
+        <Constructor visibility="public">
+          <Argument type="String" name="error"/>
+          <Argument type="int" name="code"/>
+        </Constructor>
+      </Constructors>
+      <Methods>
+        <Method name="getError" returnType="String" visibility="public"/>
+        <Method name="setError" returnType="void" visibility="public">
+          <Argument type="String" name="error"/>
+        </Method>
+        <Method name="getCode" returnType="int" visibility="public"/>
+        <Method name="setCode" returnType="void" visibility="public">
+          <Argument type="int" name="code"/>
+        </Method>
+      </Methods>
+    </Class>
+  </ClassDiagramComponents>
+  <ClassDiagramRelations/>
+</ClassDiagram>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<ClassDiagram name="RequestToReducer">
+  <ClassDiagramComponents>
+    <Class name="RequestToReducer" package="ssn.models" visibility="public" xPosition="20.0" yPosition="20.0">
+      <Fields>
+        <Field name="requestId" type="long" visibility="private"/>
+        <Field name="mapperCount" type="int" visibility="private"/>
+        <Field name="poiStats" type="PoiStats[]" visibility="private"/>
+      </Fields>
+      <Constructors>
+        <Constructor visibility="public"/>
+        <Constructor visibility="public">
+          <Argument type="long" name="requestId"/>
+          <Argument type="int" name="mapperCount"/>
+          <Argument type="PoiStats[]" name="poiStats"/>
+        </Constructor>
+      </Constructors>
+      <Methods>
+        <Method name="getRequestId" returnType="long" visibility="public"/>
+        <Method name="setRequestId" returnType="void" visibility="public">
+          <Argument type="long" name="requestId"/>
+        </Method>
+        <Method name="getPoiStats" returnType="PoiStats[]" visibility="public"/>
+        <Method name="setPoiStats" returnType="void" visibility="public">
+          <Argument type="PoiStats[]" name="poiStats"/>
+        </Method>
+        <Method name="getMapperCount" returnType="int" visibility="public"/>
+        <Method name="setMapperCount" returnType="void" visibility="public">
+          <Argument type="int" name="mapperCount"/>
+        </Method>
+      </Methods>
+    </Class>
+  </ClassDiagramComponents>
+  <ClassDiagramRelations/>
+</ClassDiagram>

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<ClassDiagram name="Checkin">
+  <ClassDiagramComponents>
+    <Class name="Checkin" package="ssn.models" visibility="public" xPosition="20.0" yPosition="20.0">
+      <Fields>
+        <Field name="id" type="int" visibility="private"/>
+        <Field name="userId" type="int" visibility="private"/>
+        <Field name="poi" type="String" visibility="private"/>
+        <Field name="poiName" type="String" visibility="private"/>
+        <Field name="poiCategory" type="String" visibility="private"/>
+        <Field name="poiCategoryId" type="int" visibility="private"/>
+        <Field name="latitude" type="double" visibility="private"/>
+        <Field name="longitude" type="double" visibility="private"/>
+        <Field name="time" type="Date" visibility="private"/>
+        <Field name="photos" type="String" visibility="private"/>
+      </Fields>
+      <Constructors>
+        <Constructor visibility="public"/>
+        <Constructor visibility="public">
+          <Argument type="int" name="id"/>
+          <Argument type="int" name="userId"/>
+          <Argument type="String" name="poi"/>
+          <Argument type="String" name="poiName"/>
+          <Argument type="String" name="poiCategory"/>
+          <Argument type="int" name="poiCategoryId"/>
+          <Argument type="double" name="latitude"/>
+          <Argument type="double" name="longitude"/>
+          <Argument type="Date" name="time"/>
+          <Argument type="String" name="photos"/>
+        </Constructor>
+      </Constructors>
+      <Methods>
+        <Method name="getId" returnType="int" visibility="public"/>
+        <Method name="setId" returnType="void" visibility="public">
+          <Argument type="int" name="id"/>
+        </Method>
+        <Method name="getUserId" returnType="int" visibility="public"/>
+        <Method name="setUserId" returnType="void" visibility="public">
+          <Argument type="int" name="userId"/>
+        </Method>
+        <Method name="getPoi" returnType="String" visibility="public"/>
+        <Method name="setPoi" returnType="void" visibility="public">
+          <Argument type="String" name="poi"/>
+        </Method>
+        <Method name="getPoiName" returnType="String" visibility="public"/>
+        <Method name="setPoiName" returnType="void" visibility="public">
+          <Argument type="String" name="poiName"/>
+        </Method>
+        <Method name="getPoiCategory" returnType="String" visibility="public"/>
+        <Method name="setPoiCategory" returnType="void" visibility="public">
+          <Argument type="String" name="poiCategory"/>
+        </Method>
+        <Method name="getPoiCategoryId" returnType="int" visibility="public"/>
+        <Method name="setPoiCategoryId" returnType="void" visibility="public">
+          <Argument type="int" name="poiCategoryId"/>
+        </Method>
+        <Method name="getLatitude" returnType="double" visibility="public"/>
+        <Method name="setLatitude" returnType="void" visibility="public">
+          <Argument type="double" name="latitude"/>
+        </Method>
+        <Method name="getLongitude" returnType="double" visibility="public"/>
+        <Method name="setLongitude" returnType="void" visibility="public">
+          <Argument type="double" name="longitude"/>
+        </Method>
+        <Method name="getTime" returnType="Date" visibility="public"/>
+        <Method name="setTime" returnType="void" visibility="public">
+          <Argument type="Date" name="time"/>
+        </Method>
+        <Method name="getPhotos" returnType="String" visibility="public"/>
+        <Method name="setPhotos" returnType="void" visibility="public">
+          <Argument type="String" name="photos"/>
+        </Method>
+      </Methods>
+    </Class>
+  </ClassDiagramComponents>
+  <ClassDiagramRelations/>
+</ClassDiagram>
