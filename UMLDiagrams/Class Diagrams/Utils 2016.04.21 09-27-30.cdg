@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<ClassDiagram name="Utils">
+  <ClassDiagramComponents>
+    <Class name="Utils" package="ssn" visibility="public" xPosition="20.0" yPosition="20.0">
+      <Fields>
+        <Field name="DEFAULT_BUFFER_SIZE" type="int" visibility="private" isStatic="true" isFinal="true"/>
+      </Fields>
+      <Constructors/>
+      <Methods>
+        <Method name="readAll" returnType="void" visibility="public" isStatic="true">
+          <Argument type="AsynchronousSocketChannel" name="channel"/>
+          <Argument type="A" name="attachment"/>
+          <Argument type="DataHandler&lt;A&gt;" name="handler"/>
+        </Method>
+        <Method name="writeAndClose" returnType="void" visibility="public" isStatic="true">
+          <Argument type="AsynchronousSocketChannel" name="ch"/>
+          <Argument type="byte[]" name="data"/>
+          <Argument type="SuccessHandler&lt;byte[]&gt;" name="handler"/>
+        </Method>
+        <Method name="writeJsonAndClose" returnType="void" visibility="public" isStatic="true">
+          <Argument type="AsynchronousSocketChannel" name="ch"/>
+          <Argument type="T" name="data"/>
+          <Argument type="SuccessHandler&lt;T&gt;" name="handler"/>
+        </Method>
+        <Method name="connectWriteJsonClose" returnType="void" visibility="public" isStatic="true">
+          <Argument type="SocketAddress" name="address"/>
+          <Argument type="T" name="data"/>
+          <Argument type="SuccessHandler&lt;T&gt;" name="handler"/>
+          <Argument type="AsynchronousChannelGroup" name="channelGroup"/>
+        </Method>
+        <Method name="connectWriteClose" returnType="void" visibility="public" isStatic="true">
+          <Argument type="SocketAddress" name="address"/>
+          <Argument type="byte[]" name="data"/>
+          <Argument type="SuccessHandler&lt;byte[]&gt;" name="handler"/>
+          <Argument type="AsynchronousChannelGroup" name="channelGroup"/>
+        </Method>
+        <Method name="nonNullOrDefault" returnType="SuccessHandler&lt;T&gt;" visibility="private" isStatic="true">
+          <Argument type="SuccessHandler&lt;T&gt;" name="h"/>
+        </Method>
+        <Method name="validateRemoteIpHost" returnType="boolean" visibility="public" isStatic="true">
+          <Argument type="AsynchronousSocketChannel" name="ch"/>
+          <Argument type="Collection&lt;String&gt;" name="allowedHosts"/>
+        </Method>
+        <Method name="parseArgs" returnType="Map&lt;String, List&lt;String&gt;&gt;" visibility="public" isStatic="true">
+          <Argument type="String[]" name="args"/>
+          <Argument type="Collection&lt;String&gt;" name="params"/>
+        </Method>
+        <Method name="firstOrNull" returnType="T" visibility="public" isStatic="true">
+          <Argument type="List&lt;? extends T&gt;" name="list"/>
+        </Method>
+        <Method name="firstIntOrNull" returnType="Integer" visibility="public" isStatic="true">
+          <Argument type="List&lt;String&gt;" name="list"/>
+        </Method>
+        <Method name="addSortedIfTop" returnType="void" visibility="public" isStatic="true">
+          <Argument type="TO" name="obj"/>
+          <Argument type="List&lt;T&gt;" name="list"/>
+          <Argument type="Comparator&lt;? super T&gt;" name="cmp"/>
+          <Argument type="int" name="n"/>
+        </Method>
+      </Methods>
+    </Class>
+  </ClassDiagramComponents>
+  <ClassDiagramRelations/>
+</ClassDiagram>
