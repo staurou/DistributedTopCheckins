@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<ClassDiagram name="Master">
+  <ClassDiagramComponents>
+    <Class name="Master" package="ssn" visibility="public" xPosition="20.0" yPosition="20.0">
+      <Fields>
+        <Field name="mappers" type="ConcurrentLinkedQueue&lt;MapperRec&gt;" visibility="private" isFinal="true"/>
+        <Field name="initialClientRequestChannels" type="Map&lt;Long, AsynchronousSocketChannel&gt;" visibility="private" isFinal="true"/>
+        <Field name="requestIds" type="AtomicLong" visibility="private" isFinal="true"/>
+        <Field name="clientChannel" type="AsynchronousServerSocketChannel" visibility="private"/>
+        <Field name="controlChannel" type="AsynchronousServerSocketChannel" visibility="private"/>
+        <Field name="channelGroup" type="AsynchronousChannelGroup" visibility="private"/>
+        <Field name="USAGE" type="String" visibility="package" isStatic="true" isFinal="true"/>
+      </Fields>
+      <Constructors/>
+      <Methods>
+        <Method name="initialize" returnType="void" visibility="public">
+          <Argument type="int" name="clientPort"/>
+          <Argument type="int" name="controlPort"/>
+          <Argument type="String" name="reducerAddress"/>
+          <Argument type="int" name="reducerPort"/>
+        </Method>
+        <Method name="addMapper" returnType="void" visibility="public">
+          <Argument type="String" name="host"/>
+          <Argument type="int" name="port"/>
+        </Method>
+        <Method name="removeMapper" returnType="void" visibility="public">
+          <Argument type="String" name="host"/>
+          <Argument type="int" name="port"/>
+        </Method>
+        <Method name="onNewRequestConnection" returnType="void" visibility="private">
+          <Argument type="AsynchronousSocketChannel" name="channel"/>
+        </Method>
+        <Method name="sendToMappers" returnType="void" visibility="private">
+          <Argument type="long" name="id"/>
+          <Argument type="LocationStatsRequest" name="req"/>
+        </Method>
+        <Method name="receiveControlRequest" returnType="void" visibility="private">
+          <Argument type="AsynchronousSocketChannel" name="channel"/>
+        </Method>
+        <Method name="locationStatsSendResponce" returnType="void" visibility="private">
+          <Argument type="ReplyFromReducer" name="rep"/>
+        </Method>
+        <Method name="main" returnType="void" visibility="public" isStatic="true">
+          <Argument type="String[]" name="args"/>
+        </Method>
+      </Methods>
+    </Class>
+  </ClassDiagramComponents>
+  <ClassDiagramRelations/>
+</ClassDiagram>

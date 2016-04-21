@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<ClassDiagram name="Reducer">
+  <ClassDiagramComponents>
+    <Class name="Reducer" package="ssn" visibility="public" xPosition="20.0" yPosition="20.0">
+      <Fields>
+        <Field name="id_requestToReducer" type="Map&lt;Long, List&lt;RequestToReducer&gt;&gt;" visibility="private" isFinal="true"/>
+        <Field name="serverChannel" type="AsynchronousServerSocketChannel" visibility="private"/>
+        <Field name="channelGroup" type="AsynchronousChannelGroup" visibility="private"/>
+        <Field name="masterAddress" type="String" visibility="private"/>
+        <Field name="masterPort" type="int" visibility="private"/>
+        <Field name="mappers" type="ConcurrentLinkedQueue&lt;String&gt;" visibility="private" isFinal="true"/>
+        <Field name="USAGE" type="String" visibility="package" isStatic="true" isFinal="true"/>
+      </Fields>
+      <Constructors/>
+      <Methods>
+        <Method name="initialize" returnType="void" visibility="public">
+          <Argument type="int" name="port"/>
+          <Argument type="String" name="masterAddress"/>
+          <Argument type="int" name="masterPort"/>
+        </Method>
+        <Method name="addMapper" returnType="void" visibility="public">
+          <Argument type="String" name="host"/>
+        </Method>
+        <Method name="removeMapper" returnType="void" visibility="public">
+          <Argument type="String" name="host"/>
+        </Method>
+        <Method name="onConnection" returnType="void" visibility="private">
+          <Argument type="AsynchronousSocketChannel" name="channel"/>
+        </Method>
+        <Method name="handleMapperRequest" returnType="void" visibility="private">
+          <Argument type="RequestToReducer" name="req"/>
+        </Method>
+        <Method name="reduce" returnType="PoiStats[]" visibility="private">
+          <Argument type="List&lt;RequestToReducer&gt;" name="mapperRequests"/>
+          <Argument type="int" name="limit"/>
+        </Method>
+        <Method name="sendResponceToMaster" returnType="void" visibility="private">
+          <Argument type="long" name="requestId"/>
+          <Argument type="PoiStats[]" name="result"/>
+        </Method>
+        <Method name="main" returnType="void" visibility="public" isStatic="true">
+          <Argument type="String[]" name="args"/>
+        </Method>
+      </Methods>
+    </Class>
+  </ClassDiagramComponents>
+  <ClassDiagramRelations>
+    <UseRelation source="ssn.Reducer" target="ssn.Reducer" sourceCardinality="1..1" targetCardinality="1..1"/>
+  </ClassDiagramRelations>
+</ClassDiagram>
