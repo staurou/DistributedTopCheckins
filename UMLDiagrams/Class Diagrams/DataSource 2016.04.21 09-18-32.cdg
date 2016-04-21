@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<ClassDiagram name="DataSource">
+  <ClassDiagramComponents>
+    <Class name="DataSource" package="ssn" visibility="public" xPosition="20.0" yPosition="20.0">
+      <Fields>
+        <Field name="ds" type="com.mysql.jdbc.jdbc2.optional.MysqlDataSource" visibility="package" isFinal="true"/>
+        <Field name="getCheckinsOrderByPoiSql" type="String" visibility="package" isFinal="true"/>
+      </Fields>
+      <Constructors>
+        <Constructor visibility="public">
+          <Argument type="String" name="host"/>
+          <Argument type="String" name="dbName"/>
+          <Argument type="String" name="username"/>
+          <Argument type="String" name="password"/>
+        </Constructor>
+      </Constructors>
+      <Methods>
+        <Method name="getCheckinsOrderByPoiPhotos" returnType="List&lt;Checkin&gt;" visibility="public">
+          <Argument type="RequestToMapper" name="req"/>
+        </Method>
+      </Methods>
+    </Class>
+  </ClassDiagramComponents>
+  <ClassDiagramRelations/>
+</ClassDiagram>
