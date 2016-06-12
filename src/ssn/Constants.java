@@ -13,8 +13,12 @@ public interface Constants {
     static final String DEFAULT_DATASOURCE_USERNAME = "omada35";
     static final String DEFAULT_DATASOURCE_PASSWORD = "omada35db";
     
+    static final int DEFAULT_MASTER_HTTP_PORT = 25696;
     static final int DEFAULT_MASTER_CLIENT_PORT = 25697;
     static final int DEFAULT_MASTER_CONTROL_PORT = 25698;
     static final int DEFAULT_REDUCER_PORT = 25700;
     static final int DEFAULT_MAPPER_PORT = 25701;
+    
+    static final int DEFAULT_MAPPER_FAIL_THRESHOLD = 3;
+    static final int DEFAULT_CLIENT_TIMEOUT_SEC = 120;
 }

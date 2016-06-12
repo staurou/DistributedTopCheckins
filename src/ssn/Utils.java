@@ -2,7 +2,9 @@ package ssn;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sun.net.httpserver.HttpExchange;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
@@ -205,6 +207,27 @@ public class Utils {
             return null;
         }
     }
+    
+    
+    public static void httpWriteJsonAndClose(HttpExchange he, int code, Object data) throws IOException {
+        try {
+            ObjectMapper m = new ObjectMapper();
+            byte[] response = m.writeValueAsBytes(data);
+            he.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
+            he.sendResponseHeaders(code, response.length);
+            OutputStream os = he.getResponseBody();
+            os.write(response);
+            he.close();
+        } catch (JsonProcessingException ex) {
+            byte[] response = ex.getMessage().getBytes(StandardCharsets.UTF_8);
+            he.sendResponseHeaders(500, response.length);
+            OutputStream os = he.getResponseBody();
+            os.write(response);
+            he.close();
+            ex.printStackTrace();
+        }
+    }
+    
     
     public static <T, TO extends T> void addSortedIfTop(TO obj, List<T> list, Comparator<? super T> cmp, int n) {
         if (list.size() > n && cmp.compare(list.get(list.size()-1), obj) >= 0) {

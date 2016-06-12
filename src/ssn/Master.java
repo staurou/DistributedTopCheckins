@@ -3,22 +3,48 @@ package ssn;
 import ssn.models.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpServer;
 import java.io.*;
 import java.net.*;
-import java.nio.ByteBuffer;
 import java.nio.channels.*;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.*;
 import static java.util.Arrays.asList;
 import static ssn.Utils.*;
 import static ssn.Constants.*;
 
 public class Master {
     
-    private class MapperRec {
+    private static class ClientRequest {
+        final long id;
+        final AsynchronousSocketChannel channel;
+        final HttpExchange httpExchange;
+        final Instant time;
+        volatile boolean failed;
+
+        public ClientRequest(long id, AsynchronousSocketChannel channel) {
+            this.id = id;
+            this.channel = channel;
+            httpExchange = null;
+            time = Instant.now();
+        }
+
+        public ClientRequest(long id, HttpExchange httpExchange) {
+            this.id = id;
+            this.httpExchange = httpExchange;
+            channel = null;
+            time = Instant.now();
+        }
+    }
+    
+    private static class MapperRec {
         final String host;
         final int port;
+        final AtomicInteger fails = new AtomicInteger(0);
 
         public MapperRec(String host, int port) {
             this.host = host;
@@ -52,7 +78,7 @@ public class Master {
     
     private final ConcurrentLinkedQueue<MapperRec> mappers = new ConcurrentLinkedQueue<>();
     
-    private final Map<Long, AsynchronousSocketChannel> initialClientRequestChannels
+    private final Map<Long, ClientRequest> clientRequests
             = new ConcurrentHashMap<>();
     
     private final AtomicLong requestIds = new AtomicLong(0);
@@ -61,8 +87,14 @@ public class Master {
     private AsynchronousServerSocketChannel controlChannel;
     private AsynchronousChannelGroup channelGroup;
     
+    private String reducerAddress;
+    private int reducerPort;
     
-    public void initialize(int clientPort, int controlPort, String reducerAddress, int reducerPort) throws IOException {
+    public void initialize(int clientPort, int controlPort, String reducerAddress,
+            int reducerPort, int httpPort) throws IOException {
+        this.reducerAddress = reducerAddress;
+        this.reducerPort = reducerPort;
+        
         channelGroup = AsynchronousChannelGroup.withThreadPool(Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()));
         
         clientChannel = AsynchronousServerSocketChannel.open(channelGroup);
@@ -100,7 +132,21 @@ public class Master {
                 exc.printStackTrace();
             }
         });
-        System.out.println("Listening on "+clientPort+" for client requests and "+controlPort+" for control requests....");
+        
+        HttpServer server = HttpServer.create(new InetSocketAddress(httpPort), 0);
+        server.createContext("/locationStats", this::onLocationStatsHttp);
+        server.createContext("/", this::onHomeHttp);
+        server.setExecutor(null); // creates a default executor
+        server.start();
+        
+        Timer timer = new Timer("tideup");
+        timer.schedule(new TimerTask() {
+            @Override public void run() {
+                clearTimedoutRequests();
+            }
+        }, 2000, 2000);
+        
+        System.out.println("Listening on "+clientPort+" for client requests, on "+controlPort+" for control requests and on "+httpPort+" for http requests....");
         while (true) {
             try {
                 channelGroup.awaitTermination(15, TimeUnit.DAYS);
@@ -109,11 +155,47 @@ public class Master {
         }
     }
     
+    public void addMapperPropagate(String host, int port) {
+        System.out.println("Adding mapper "+host+":"+port);
+        mappers.add(new MapperRec(host, port));
+        connectWriteJsonClose(new InetSocketAddress(reducerAddress, reducerPort),
+            Request.fromObject("mapperAddRemove", new MapperAddRemove(true, host, port)),
+            new SuccessHandler<Request>() {
+                @Override public void success(Request data) {
+                    System.out.println("Sent add mapper "+host+":"+port+" request to reducer");
+                }
+
+                @Override public void fail(Throwable exc, Request data) {
+                    System.err.println("Failed to send add mapper "+host+":"+port+" request to reducer");
+                }
+            },
+            channelGroup);
+    }
+    
+    public void removeMapperPropagate(String host, int port) {
+        System.out.println("Removing mapper "+host+":"+port);
+        mappers.remove(new MapperRec(host, port));
+        connectWriteJsonClose(new InetSocketAddress(reducerAddress, reducerPort),
+            Request.fromObject("mapperAddRemove", new MapperAddRemove(false, host, port)),
+            new SuccessHandler<Request>() {
+                @Override public void success(Request data) {
+                    System.out.println("Sent remove mapper "+host+":"+port+" request to reducer");
+                }
+
+                @Override public void fail(Throwable exc, Request data) {
+                    System.err.println("Failed to send remove mapper "+host+":"+port+" request to reducer");
+                }
+            },
+            channelGroup);
+    }
+    
     public void addMapper(String host, int port) {
+        System.out.println("Adding mapper "+host+":"+port);
         mappers.add(new MapperRec(host, port));
     }
     
     public void removeMapper(String host, int port) {
+        System.out.println("Removing mapper "+host+":"+port);
         mappers.remove(new MapperRec(host, port));
     }
     
@@ -127,7 +209,7 @@ public class Master {
                     final ObjectMapper m = new ObjectMapper();
                     Request req = m.readValue(data, Request.class);
                     if ("locationStats".equals(req.getAction())) {
-                        initialClientRequestChannels.put(id, channel);
+                        clientRequests.put(id, new ClientRequest(id, channel));
                         sendToMappers(id, req.getBodyAs(LocationStatsRequest.class));
                     } else {
                         writeJsonAndClose(channel, new ErrorReply("Unknown action "+req.getAction(), 400), null);
@@ -144,6 +226,36 @@ public class Master {
                 writeJsonAndClose(channel, new ErrorReply(exc.getMessage(), 500), null);
             }
         });
+    }
+    
+    private void onLocationStatsHttp(HttpExchange he) throws IOException {
+        long id = requestIds.incrementAndGet();
+        try {
+            final ObjectMapper m = new ObjectMapper();
+            m.setDateFormat(DATE_FORMAT);
+            LocationStatsRequest req = m.readValue(he.getRequestBody(), LocationStatsRequest.class);
+            clientRequests.put(id, new ClientRequest(id, he));
+            sendToMappers(id, req);
+
+        } catch (IOException ex) {
+            markFailed(id);
+            httpWriteJsonAndClose(he, 500, new ErrorReply(ex.getMessage(), 500));
+            ex.printStackTrace();
+        }
+
+    }
+    
+    private void onHomeHttp(HttpExchange he) throws IOException {
+        BufferedInputStream file = new BufferedInputStream(getClass().getClassLoader().getResourceAsStream("home.html"));
+        he.getResponseHeaders().set("Content-Type", "text/html; charset=UTF-8");
+        he.sendResponseHeaders(200, file.available());
+        try (OutputStream os = new BufferedOutputStream(he.getResponseBody())) {
+            int b;
+            while ((b=file.read()) != -1) {
+                os.write(b);
+            }
+        }
+        he.close();
     }
     
     private void sendToMappers(long id, LocationStatsRequest req) throws IOException {
@@ -165,11 +277,25 @@ public class Master {
 
                         @Override public void fail(Throwable exc, byte[] data) {
                             exc.printStackTrace();
+                            int fails = mapper.fails.incrementAndGet();
+                            System.err.println("Mapper "+mapper.host+":"+mapper.port+" failed. Fail count is now "+fails);
+                            if (fails >= DEFAULT_MAPPER_FAIL_THRESHOLD) {
+                                System.out.println("IMPORTANT! Mapper "+mapper.host+":"+mapper.port+" reached fail threshold and thus it will be removed");
+                                removeMapperPropagate(mapper.host, mapper.port);
+                            }
+                            markFailed(id);
                         }
                     },
                     channelGroup);
             } catch (Exception ex) {
                 ex.printStackTrace();
+                int fails = mapper.fails.incrementAndGet();
+                System.err.println("Mapper "+mapper.host+":"+mapper.port+" failed. Fail count is now "+fails);
+                if (fails >= DEFAULT_MAPPER_FAIL_THRESHOLD) {
+                    System.out.println("IMPORTANT! Mapper "+mapper.host+":"+mapper.port+" reached fail threshold and thus it will be removed");
+                    removeMapperPropagate(mapper.host, mapper.port);
+                }
+                markFailed(id);
             }
         }
     }
@@ -179,11 +305,17 @@ public class Master {
             @Override
             public void handleData(String data, Void attachment) {
                 try {
-                    System.out.println("Control request data "+data);
                     final ObjectMapper m = new ObjectMapper();
                     Request req = m.readValue(data, Request.class );
-                if ("locationStatsSendResponce".equals(req.getAction())) {
+                    if ("locationStatsSendResponce".equals(req.getAction())) {
                         locationStatsSendResponce(req.getBodyAs(ReplyFromReducer.class));
+                    } else if ("mapperAddRemove".equals(req.getAction())) {
+                        MapperAddRemove mapperAddRemove = req.getBodyAs(MapperAddRemove.class);
+                        if (mapperAddRemove.isAdd()) {
+                            addMapperPropagate(mapperAddRemove.getHost(), mapperAddRemove.getPort());
+                        } else {
+                            removeMapperPropagate(mapperAddRemove.getHost(), mapperAddRemove.getPort());
+                        }
                     } else {
                         writeJsonAndClose(channel, new ErrorReply("Unknown action "+req.getAction(), 400), null);
                     }
@@ -203,28 +335,58 @@ public class Master {
         });
     }
     
-    private void locationStatsSendResponce(ReplyFromReducer rep) {
+    private void locationStatsSendResponce(ReplyFromReducer rep) throws IOException {
          long id = rep.getRequestId();
          System.out.println("resp len "+rep.getReducerReply().length);
-         AsynchronousSocketChannel ch = initialClientRequestChannels.remove(id);
-         if (ch != null) {
+         ClientRequest req = clientRequests.remove(id);
+         if (req.channel != null) {
+             AsynchronousSocketChannel ch = req.channel;
              writeJsonAndClose(ch, rep.getReducerReply(), new SuccessHandler<PoiStats[]>() {
 
-                 @Override
-                 public void success(PoiStats[] data) {
+                 @Override public void success(PoiStats[] data) {
                      System.out.println("Sent reply to client. Request id "+id);
                  }
 
-                 @Override
-                 public void fail(Throwable exc, PoiStats[] data) {
+                 @Override public void fail(Throwable exc, PoiStats[] data) {
                      exc.printStackTrace();
                  }
              });
          } else {
-             System.err.println("RequestID not found "+id);
+            HttpExchange he = req.httpExchange;
+            if (he != null) {
+                httpWriteJsonAndClose(he, 200, rep.getReducerReply());
+            } else {
+                System.err.println("RequestID not found "+id);
+            }
          }            
     }
     
+    private void markFailed(long requestId) {
+        clientRequests.computeIfPresent(requestId, (id, clientRequest) -> {
+            clientRequest.failed = true;
+            return clientRequest;
+        });
+    }
+    
+    private void clearTimedoutRequests() {
+        Iterator<ClientRequest> it = clientRequests.values().iterator();
+
+        Instant limit = Instant.now().minusSeconds(DEFAULT_CLIENT_TIMEOUT_SEC);
+        while (it.hasNext()) {
+            ClientRequest req = it.next();
+            if (req.failed || limit.isAfter(req.time)) {
+                it.remove();
+                System.out.println("Cleared "+ (req.failed ? "failed" : "timed out") +" request #"+req.id);
+                try {
+                    if (req.channel != null) {
+                        writeJsonAndClose(req.channel, new ErrorReply("Please try again shortly", 503), null);
+                    } else if (req.httpExchange != null) {
+                        httpWriteJsonAndClose(req.httpExchange, 503, new ErrorReply("Please try again shortly", 503));
+                    }
+                } catch (IOException e) {}
+            }
+        }
+    }
     
     static final String USAGE = "MASTER USAGE\n"
             + "Arguments: [-p CLIENT_PORT] [-cp CONTROL_PORT]"
@@ -238,7 +400,7 @@ public class Master {
     public static void main(String[] args) throws IOException {
         Master instance = new Master();
         
-        Map<String, List<String>> options = parseArgs(args, Arrays.asList("-p", "-cp", "-m", "-r", "-h"));
+        Map<String, List<String>> options = parseArgs(args, Arrays.asList("-p", "-cp", "-m", "-r", "-h","-http", "-addmapper", "-removemapper"));
         if (options.containsKey("-h") || options.size() <= 1) {
             System.out.println(USAGE);
             System.exit(0);
@@ -268,6 +430,39 @@ public class Master {
             instance.addMapper(mappers.get(i), Integer.parseInt(mappers.get(i+1)));
         }
         
-        instance.initialize(port, controlPort, reducerAddress, reducerPort);
+        final Integer httpArg = firstIntOrNull(options.get("-http"));
+        int httpPort = httpArg != null ? httpArg : DEFAULT_MASTER_HTTP_PORT;
+        
+        if (options.containsKey("-addmapper") || options.containsKey("-removemapper")) {
+            boolean isAdd = options.containsKey("-addmapper");
+            AtomicInteger sentRequests = new AtomicInteger();
+            for (MapperRec mapper : instance.mappers) {
+                connectWriteJsonClose(new InetSocketAddress("localhost", controlPort),
+                    Request.fromObject("mapperAddRemove", new MapperAddRemove(isAdd, mapper.host, mapper.port)),
+                    new SuccessHandler<Request>() {
+                        @Override public void success(Request data) {
+                            System.out.println("Sent add mapper "+mapper.host+":"+mapper.port+" request");
+                            if (sentRequests.incrementAndGet() == instance.mappers.size()) {
+                                System.exit(0);
+                            }
+                        }
+
+                        @Override public void fail(Throwable exc, Request data) {
+                            System.err.println("Failed to send add mapper "+mapper.host+":"+mapper.port+" request");
+                            if (sentRequests.incrementAndGet() == instance.mappers.size()) {
+                                System.exit(0);
+                            }
+                        }
+                    },
+                    null);
+            }
+            while (sentRequests.get() != instance.mappers.size()) {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {}
+            }
+        }
+
+        instance.initialize(port, controlPort, reducerAddress, reducerPort, httpPort);
     }
 }

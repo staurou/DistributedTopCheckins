@@ -4,8 +4,8 @@ import ssn.models.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
 import java.nio.channels.*;
+import java.time.Instant;
 import java.util.*;
 import static java.util.Arrays.asList;
 import java.util.concurrent.*;
@@ -13,7 +13,20 @@ import static ssn.Constants.*;
 import static ssn.Utils.*;
 
 public class Reducer {
-    private final Map<Long, List<RequestToReducer>> id_requestToReducer = new ConcurrentHashMap<>();
+    
+    private static class ClientRequest {
+        final long id;
+        List<RequestToReducer> requests;
+        final Instant time;
+
+        public ClientRequest(long id, List<RequestToReducer> requests) {
+            this.id = id;
+            this.requests = new LinkedList<>(requests);
+            time = Instant.now();
+        }
+    }
+    
+    private final Map<Long, ClientRequest> clientRequests = new ConcurrentHashMap<>();
     
     private AsynchronousServerSocketChannel serverChannel;
     private AsynchronousChannelGroup channelGroup;
@@ -53,6 +66,14 @@ public class Reducer {
                 exc.printStackTrace();
             }
         });
+        
+        Timer timer = new Timer("tideup");
+        timer.schedule(new TimerTask() {
+            @Override public void run() {
+                clearTimedoutRequests();
+            }
+        }, 2000, 2000);
+        
         System.out.println("Listening on "+port+"....");
         while (true) {
             try {
@@ -64,22 +85,30 @@ public class Reducer {
     
     public void addMapper(String host) {
         mappers.add(host);
+        System.out.println("Added one mapper at "+host);
     }
     
     public void removeMapper(String host) {
         mappers.remove(host);
+        System.out.println("Removed one mapper at "+host);
     }
     
     private void onConnection(AsynchronousSocketChannel channel) {
         readAll(channel, null, new Utils.DataHandler<Void>() {
             @Override
             public void handleData(String data, Void id) {
-                System.out.println("Request "+data);
                 try {
                     final ObjectMapper m = new ObjectMapper();
                     Request req = m.readValue(data, Request.class);
                     if ("locationStats".equals(req.getAction())) {
                         handleMapperRequest(req.getBodyAs(RequestToReducer.class));
+                    } else if ("mapperAddRemove".equals(req.getAction())) {
+                        MapperAddRemove mapperAddRemove = req.getBodyAs(MapperAddRemove.class);
+                        if (mapperAddRemove.isAdd()) {
+                            addMapper(mapperAddRemove.getHost());
+                        } else {
+                            removeMapper(mapperAddRemove.getHost());
+                        }
                     } else {
                         writeJsonAndClose(channel, new ErrorReply("Unknown action "+req.getAction(), 400), null);
                     }
@@ -104,17 +133,16 @@ public class Reducer {
 
         if (req.getMapperCount() == 1) { // if only one mapper, reduce immediatelly
             sendResponceToMaster(req.getRequestId(), reduce(asList(req), REDUCE_LIMIT));
-            if (id_requestToReducer.remove(req.getRequestId()) != null) {
+            if (clientRequests.remove(req.getRequestId()) != null) {
                 System.err.println("Ignoring previous request(s) from mapper because current request stated that mappers count is 1. Req id "+req.getRequestId());
             }
             return;
         }
 
-        id_requestToReducer.merge(req.getRequestId(), new LinkedList<>(asList(req)),
-            (reqList, ignore) -> {
-                System.out.println("At least i am here");
+        clientRequests.merge(req.getRequestId(), new ClientRequest(req.getRequestId(), asList(req)),
+            (cliReq, ignore) -> {
+                List<RequestToReducer> reqList = cliReq.requests;
                 reqList.add(req);
-                System.out.println("reqList.size() "+reqList.size()+" req.getMapperCount() "+req.getMapperCount());
                 if (reqList.size() >= req.getMapperCount()) {
                     try {
                         sendResponceToMaster(req.getRequestId(), reduce(reqList, REDUCE_LIMIT));
@@ -123,7 +151,7 @@ public class Reducer {
                     }
                     return null; // remove the mappping
                 } else {
-                    return reqList; // with the new request from mapper added
+                    return cliReq; // with the new request from mapper added
                 }
             });
     }
@@ -172,6 +200,19 @@ public class Reducer {
     }
     
 
+    private void clearTimedoutRequests() {
+        Iterator<ClientRequest> it = clientRequests.values().iterator();
+
+        Instant limit = Instant.now().minusSeconds(DEFAULT_CLIENT_TIMEOUT_SEC);
+        while (it.hasNext()) {
+            ClientRequest req = it.next();
+            if (limit.isAfter(req.time)) {
+                it.remove();
+                System.out.println("Cleared timed out request #"+req.id);
+            }
+        }
+    }
+    
     static final String USAGE = "REDUCER USAGE\n"
         + "Arguments: [-p PORT]"
         + " -m MAPPER_ADDRESS [MAPPER_ADDRESS]..."
