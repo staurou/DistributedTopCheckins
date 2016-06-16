@@ -24,8 +24,9 @@ public class Mapper {
     
     private SocketAddress reducerAddress;
     
-    public void initialize(int port, String masterAddress, SocketAddress reducerAddress) throws IOException, SQLException {
-        ds = new DataSource(DEFAULT_DATASOURCE_HOST,  DEFAULT_DATASOURCE_SCHEMA, DEFAULT_DATASOURCE_USERNAME, DEFAULT_DATASOURCE_PASSWORD);
+    public void initialize(int port, String masterAddress, SocketAddress reducerAddress,
+            String dbHost, String dbSchema, String dbUser, String dbPass) throws IOException, SQLException {
+        ds = new DataSource(dbHost,  dbSchema, dbUser, dbPass);
         
         this.reducerAddress = reducerAddress;
         
@@ -154,10 +155,16 @@ public class Mapper {
             + "Arguments: [-p PORT]"
             + " [-r REDUCER_ADDRESS [REDUCER_PORT]]"
             + " [-s MASTER_ADDRESS]"
+            + " [-dbhost DATASOURCE_HOST]"
+            + " [-dbschema DATASOURCE_SCHEMA]"
+            + " [-dbuser DATASOURCE_USERNAME]"
+            + " [-dbpass DATASOURCE_PASSWORD]"
             + "\nDefault PORT is "+DEFAULT_MAPPER_PORT
             + ", \nDefault MASTER_ADDRESS is localhost"
             + ", \nDefault REDUCER_ADDRESS is localhost"
-            + ", \nDefault REDUCER_PORT is "+DEFAULT_REDUCER_PORT;
+            + ", \nDefault REDUCER_PORT is "+DEFAULT_REDUCER_PORT
+            + ", \nDefault DATASOURCE_HOST is "+DEFAULT_DATASOURCE_HOST
+            + ", \nDefault DATASOURCE_SCHEMA is "+DEFAULT_DATASOURCE_SCHEMA;
     
     public static void main(String[] args) throws IOException, SQLException {
         Mapper instance = new Mapper();
@@ -186,6 +193,12 @@ public class Mapper {
             }
         }
         
-        instance.initialize(port, master, new InetSocketAddress(reducerAddress, reducerPort));
+        String dbHost = options.getOrDefault("-dbhost", asList(DEFAULT_DATASOURCE_HOST)).get(0);
+        String dbSchema = options.getOrDefault("-dbschema", asList(DEFAULT_DATASOURCE_SCHEMA)).get(0);
+        String dbUser = options.getOrDefault("-dbuser", asList(DEFAULT_DATASOURCE_USERNAME)).get(0);
+        String dbPass = options.getOrDefault("-dbpass", asList(DEFAULT_DATASOURCE_PASSWORD)).get(0);
+        
+        instance.initialize(port, master, new InetSocketAddress(reducerAddress, reducerPort),
+                dbHost, dbSchema, dbUser, dbPass);
     }
 }

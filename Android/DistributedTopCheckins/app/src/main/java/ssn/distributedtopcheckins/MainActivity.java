@@ -14,6 +14,7 @@ import android.util.Log;
 import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.*;
+import android.widget.EditText;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
@@ -108,7 +109,23 @@ public class MainActivity extends AppCompatActivity {
 
         webview.addJavascriptInterface(new JsHandle(webview, this), "Android");
 
-        webview.loadUrl("http://192.168.1.120:8000");
+        final EditText txtUrl = new EditText(this);
+
+        // Set the default text to a link of the Queen
+        txtUrl.setHint("http://192.168.1.120:8000");
+        txtUrl.setText("http://192.168.1.120:8000");
+
+        new AlertDialog.Builder(this)
+                .setTitle("Server")
+                .setMessage("Please insert server adress")
+                .setView(txtUrl)
+                .setPositiveButton("Moustachify", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int whichButton) {
+                        String url = txtUrl.getText().toString();
+                        webview.loadUrl(url);
+                    }
+                })
+                .show();
     }
 
     @Override

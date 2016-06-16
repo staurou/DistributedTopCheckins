@@ -76,7 +76,7 @@ public class DataSource {
     }
     
     public List<String> getPoiPhotos(String poi) {
-        String statement = "SELECT photos FROM ds_systems_2016_omada35.checkins WHERE POI = '"
+        String statement = "SELECT DISTINCT(photos) FROM ds_systems_2016_omada35.checkins WHERE POI = '"
                 +poi.replace("'", "''")+"' AND photos <> 'Not exists';";
          
         List<String> result = new LinkedList<>();

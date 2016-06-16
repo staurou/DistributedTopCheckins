@@ -15,7 +15,7 @@ public interface Constants {
     
     static final String DEFAULT_IMAGE_FILEPATH = "disttopcheimages";
     
-    static final int DEFAULT_MASTER_HTTP_PORT = 25696;
+    static final int DEFAULT_MASTER_HTTP_PORT = 8000;
     static final int DEFAULT_MASTER_CLIENT_PORT = 25697;
     static final int DEFAULT_MASTER_CONTROL_PORT = 25698;
     static final int DEFAULT_REDUCER_PORT = 25700;

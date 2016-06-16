@@ -96,11 +96,12 @@ public class Master {
     private String imageFilePath = DEFAULT_IMAGE_FILEPATH;
     
     public void initialize(int clientPort, int controlPort, String reducerAddress,
-            int reducerPort, int httpPort) throws IOException, SQLException {
+            int reducerPort, int httpPort,
+            String dbHost, String dbSchema, String dbUser, String dbPass) throws IOException, SQLException {
         this.reducerAddress = reducerAddress;
         this.reducerPort = reducerPort;
         
-        ds = new DataSource(DEFAULT_DATASOURCE_HOST,  DEFAULT_DATASOURCE_SCHEMA, DEFAULT_DATASOURCE_USERNAME, DEFAULT_DATASOURCE_PASSWORD);
+        ds = new DataSource(dbHost,  dbSchema, dbUser, dbPass);
         Files.createDirectories(Paths.get(imageFilePath));
         
         channelGroup = AsynchronousChannelGroup.withThreadPool(Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()));
@@ -227,7 +228,7 @@ public class Master {
                     }
                 } catch (IOException ex) {
                     ex.printStackTrace();
-                    writeJsonAndClose(channel, new ErrorReply(ex.getMessage(), 500), null);
+                    writeJsonAndClose(channel, new ErrorReply(ex.toString(), 500), null);
                 }
             }
 
@@ -251,7 +252,7 @@ public class Master {
         } catch (Exception ex) {
             ex.printStackTrace();
             markFailed(id);
-            httpWriteJsonAndClose(he, 500, new ErrorReply(ex.getMessage(), 500));
+            httpWriteJsonAndClose(he, 500, new ErrorReply(ex.toString(), 500));
         }
 
     }
@@ -284,10 +285,10 @@ public class Master {
             }
             he.close();
         } catch (FileNotFoundException e) {
-            httpWriteJsonAndClose(he, 404, new ErrorReply(e.getMessage(), 404));
+            httpWriteJsonAndClose(he, 404, new ErrorReply(e.toString(), 404));
         } catch (Exception e) {
             e.printStackTrace();
-            httpWriteJsonAndClose(he, 500, new ErrorReply(e.getMessage(), 500));
+            httpWriteJsonAndClose(he, 500, new ErrorReply(e.toString(), 500));
         }
     }
     
@@ -296,7 +297,7 @@ public class Master {
             httpWriteJsonAndClose(he, 200, ds.getPoiPhotos(he.getRequestURI().getQuery()));
         } catch (Exception e) {
             e.printStackTrace();
-            httpWriteJsonAndClose(he, 500, new ErrorReply(e.getMessage(), 500));
+            httpWriteJsonAndClose(he, 500, new ErrorReply(e.toString(), 500));
         }
     }
     
@@ -314,7 +315,7 @@ public class Master {
             httpWriteJsonAndClose(he, 200, "ok");
         } catch (Exception ex) {
             ex.printStackTrace();
-            httpWriteJsonAndClose(he, 500, new ErrorReply(ex.getMessage(), 500));
+            httpWriteJsonAndClose(he, 500, new ErrorReply(ex.toString(), 500));
         }
     }
     
@@ -381,7 +382,7 @@ public class Master {
                     }
                 } catch (IOException ex) {
                     ex.printStackTrace();
-                    writeJsonAndClose(channel, new ErrorReply(ex.getMessage(), 500), null);
+                    writeJsonAndClose(channel, new ErrorReply(ex.toString(), 500), null);
                 }
             }
 
@@ -451,16 +452,26 @@ public class Master {
     static final String USAGE = "MASTER USAGE\n"
             + "Arguments: [-p CLIENT_PORT] [-cp CONTROL_PORT]"
             + " -m MAPPER_ADDRESS MAPPER_PORT [MAPPER_ADDRESS MAPPER_PORT]..."
-            + " [-r REDUCER_ADDRESS [REDUCER_PORT]]"
+            + " [-r REDUCER_ADDRESS [REDUCER_PORT]] [-http HTTP_PORT]"
+            + " [-dbhost DATASOURCE_HOST]"
+            + " [-dbschema DATASOURCE_SCHEMA]"
+            + " [-dbuser DATASOURCE_USERNAME]"
+            + " [-dbpass DATASOURCE_PASSWORD]"
+            + " [-addmapper|-removemapper]"
             + "\nDefault CLIENT_PORT is "+DEFAULT_MASTER_CLIENT_PORT
             + ", \nDefault CONTROL_PORT is "+DEFAULT_MASTER_CONTROL_PORT
             + ", \nDefault REDUCER_ADDRESS is localhost"
-            + ", \nDefault REDUCER_PORT is "+DEFAULT_REDUCER_PORT;
+            + ", \nDefault REDUCER_PORT is "+DEFAULT_REDUCER_PORT
+            + ", \nDefault HTTP_PORT is "+DEFAULT_MASTER_HTTP_PORT
+            + ", \nDefault DATASOURCE_HOST is "+DEFAULT_DATASOURCE_HOST
+            + ", \nDefault DATASOURCE_SCHEMA is "+DEFAULT_DATASOURCE_SCHEMA;
     
     public static void main(String[] args) throws IOException, SQLException {
         Master instance = new Master();
         
-        Map<String, List<String>> options = parseArgs(args, Arrays.asList("-p", "-cp", "-m", "-r", "-h","-http", "-addmapper", "-removemapper"));
+        Map<String, List<String>> options = parseArgs(args, Arrays.asList("-p", "-cp", "-m", "-r", "-h",
+                "-http", "-addmapper", "-removemapper",
+                "-dbhost", "-dbschema", "-dbuser", "-dbpass"));
         if (options.containsKey("-h") || options.size() <= 1) {
             System.out.println(USAGE);
             System.exit(0);
@@ -493,6 +504,11 @@ public class Master {
         final Integer httpArg = firstIntOrNull(options.get("-http"));
         int httpPort = httpArg != null ? httpArg : DEFAULT_MASTER_HTTP_PORT;
         
+        String dbHost = options.getOrDefault("-dbhost", asList(DEFAULT_DATASOURCE_HOST)).get(0);
+        String dbSchema = options.getOrDefault("-dbschema", asList(DEFAULT_DATASOURCE_SCHEMA)).get(0);
+        String dbUser = options.getOrDefault("-dbuser", asList(DEFAULT_DATASOURCE_USERNAME)).get(0);
+        String dbPass = options.getOrDefault("-dbpass", asList(DEFAULT_DATASOURCE_PASSWORD)).get(0);
+        
         if (options.containsKey("-addmapper") || options.containsKey("-removemapper")) {
             boolean isAdd = options.containsKey("-addmapper");
             AtomicInteger sentRequests = new AtomicInteger();
@@ -523,6 +539,7 @@ public class Master {
             }
         }
 
-        instance.initialize(port, controlPort, reducerAddress, reducerPort, httpPort);
+        instance.initialize(port, controlPort, reducerAddress, reducerPort, httpPort,
+                dbHost, dbSchema, dbUser, dbPass);
     }
 }

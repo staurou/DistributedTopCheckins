@@ -61,10 +61,9 @@
             
             .photoPreview {
                 max-width: 100%;
-                /*height: auto;
-                width: auto;*/
+                height: auto;
                 border: 2px solid rgb(100, 100, 100);
-                border-radius: 0.3em;
+                border-radius: 0.5em;
                 display: block;
                 margin: auto;
             }
@@ -95,17 +94,47 @@
                 padding: 1em;
             }
             
-            #newCheckInControls {
-/*                position: absolute;
-                bottom: 0;
-                border-radius: 2em;
-                background: rgba(255, 255, 255, 0.1);
-                border: 2px solid rgb(180, 180, 180);*/
-            }
-            
             #checkinPreview button {
                 margin: 0.5em 1em;
                 padding: 0.2em;
+                background: none;
+                border: none;
+            }
+            
+            #photoGallery {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.88);
+                z-index: 1001;
+                display: none;
+            }
+            
+            #photos img {
+                max-width: 100%;
+                height: auto;
+                position: absolute;
+                top: 0;
+                left: 0;
+                border-bottom: solid 2px rgb(48, 48, 48);
+                opacity: 0;
+            }
+            
+            #photos img:first-of-type {
+                opacity: 1;
+            }
+            
+            #photoControls {
+                position: absolute;
+                bottom: 0.6em;
+                right: 1em;
+                z-index: 10;
+            }
+            
+            #photoControls button {
+                margin-right: 0.5em; 
                 background: none;
                 border: none;
             }
@@ -124,6 +153,28 @@
                 <button id="cancelNewCheckin" type="button" title="Cancel" onclick="document.getElementById('checkinPreview').style.display='none';"><img src="https://maxcdn.icons8.com/Color/PNG/48/User_Interface/close_window-48.png" title="Close Window" width="54"></button>
             </div>
         </div></div>
+        <div id="photoGallery">
+            <div id="photoControls">
+                <button title="Previous" type="button" onclick="prevPhoto()"><img src="https://maxcdn.icons8.com/Color/PNG/48/Media_Controls/previous-48.png" title="Previous" width="48"></button>
+                <button title="Next" type="button" onclick="nextPhoto();"><img src="https://maxcdn.icons8.com/Color/PNG/48/Media_Controls/next-48.png" title="Next" width="48"></button>
+                <button title="Close" type="button" onclick="document.getElementById('photoGallery').style.display='none'"><img src="https://maxcdn.icons8.com/Color/PNG/48/User_Interface/close_window-48.png" title="Close Window" width="48"></button>
+                <script>
+                    function nextPhoto() {
+                        var photos = document.getElementById('photos');
+                        if (photos.children.lenght < 2) return;
+                        photos.appendChild(photos.firstElementChild);
+                    }
+                    function prevPhoto() {
+                        var photos = document.getElementById('photos');
+                        if (photos.children.length < 2) return;
+                        photos.insertBefore(photos.lastElementChild, photos.firstElementChild);
+                    }
+                </script>
+            </div>
+            <div id="photos">
+                
+            </div>
+        </div>
         <script>
             "use strict";
             var map;
@@ -251,7 +302,8 @@
                                             parseFloat(poi.longitude)),
                                             labels[i2 % labels.length],
                                             poi.poiName,
-                                            "<h3>" + poi.poiName + "</h3>" + "<h5>" + poi.count + " checkins</h5>"));
+                                            "<h3>" + poi.poiName + "</h3>" + "<h5>" + poi.count + " checkins</h5>\
+                                            <button onclick=\"showPoiPhotos('"+poi.poi+"');\">See Photos</button>"));
                                 }, i * 100, i);
                             }
                         }
@@ -266,6 +318,43 @@
                     "timeFrom": document.getElementById("timeFrom").value.replace("T", " "),
                     "timeTo": document.getElementById("timeTo").value.replace("T", " ")
                 }));
+            }
+            
+            function showPoiPhotos(poi) {
+                var xmlhttp = new XMLHttpRequest();
+                xmlhttp.onreadystatechange = function () {
+                    if (xmlhttp.readyState === 4) {
+                        if (xmlhttp.status >= 400) {
+                            try  {
+                                var responce = JSON.parse(xmlhttp.response);
+                                alert("Something went wrong.\n"+responce.error);
+                            } catch (err) {
+                                alert("Something went wrong...");
+                                throw err;
+                            }
+                        } else if (xmlhttp.status === 200) {
+                            var photos = JSON.parse(xmlhttp.response);
+                            console.log(photos);
+                            if (photos.length === 0) {
+                                alert("No photos found on this place.");
+                                return;
+                            }
+                            var photosElem = document.getElementById("photos");
+                            photosElem.innerHTML = '';
+                            console.log(photos.length);
+                            for (var i=0; i<photos.length; i++) {
+                                console.log("lalallala");
+                                var img = document.createElement("img");
+                                img.src = photos[i];
+                                img.alt = "photo "+i;
+                                photosElem.appendChild(img);
+                            }
+                            document.getElementById("photoGallery").style.display = "block";
+                        }
+                    }
+                };
+                xmlhttp.open("GET", "/poiPhotos?"+poi, true);
+                xmlhttp.send();
             }
             
             function findPossiblePlaces(lat, long) {
@@ -396,15 +485,14 @@
                 var photoPreview = document.getElementById("photoPreview");
                 var checkinPreview = document.getElementById("checkinPreview");
                 photoPreview.setAttribute("src", "data:image/jpeg;base64,"+photoData);
-                photoPreview.style.height = (window.innerHeight*0.6)+"px";
+                photoPreview.style.maxHeight = (window.innerHeight*0.7)+"px";
                 findPossiblePlaces(lastUserPosition.lat, lastUserPosition.lng);
                 checkinPreview.style.display = "block";
             };
             
             
-            // key=AIzaSyAedyifjS61f4hZG0kmYZXFLl6aKJ1gnuc
 //            google.maps.event.addDomListener(window, 'load', initialize);
         </script>
-        <script src="https://maps.googleapis.com/maps/api/js?callback=initialize"></script>
+        <script src="https://maps.googleapis.com/maps/api/js?callback=initialize&key=AIzaSyAedyifjS61f4hZG0kmYZXFLl6aKJ1gnuc"></script>
     </body>
 </html>
