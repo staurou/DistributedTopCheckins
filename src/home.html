@@ -35,7 +35,7 @@
                 padding: 0.5em;
             }
             
-            .getCheckins {
+            .getCheckins, .newCheckin {
                 color : rgb(25,25,25);
                 font-family : Roboto,Arial,sans-serif;
                 font-size : 1.5em;
@@ -59,38 +59,106 @@
                 z-index: 10000000 !important;
             }
             
+            .photoPreview {
+                max-width: 100%;
+                /*height: auto;
+                width: auto;*/
+                border: 2px solid rgb(100, 100, 100);
+                border-radius: 0.3em;
+                display: block;
+                margin: auto;
+            }
+            
+            #placesWrap {
+                margin-top: 1em;
+            }
+            
+            #placesWrap label {
+                font-weight: bold;
+                color: white;
+                text-shadow: 0px 0px 2px #3E3E3E;
+            }
+            
+            #checkinPreview {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(70, 70, 70, 0.6);
+                display: none;
+                z-index: 1000;
+                text-align: center;
+            }
+            
+            #checkinPreviewInner {
+                padding: 1em;
+            }
+            
+            #newCheckInControls {
+/*                position: absolute;
+                bottom: 0;
+                border-radius: 2em;
+                background: rgba(255, 255, 255, 0.1);
+                border: 2px solid rgb(180, 180, 180);*/
+            }
+            
+            #checkinPreview button {
+                margin: 0.5em 1em;
+                padding: 0.2em;
+                background: none;
+                border: none;
+            }
         </style>
     </head>
     <body>
         <div id="map"></div>
-
+        <div id="checkinPreview"><div id="checkinPreviewInner">
+            <img id="photoPreview" class="photoPreview" alt="photo preview">
+            <div id="newCheckInControls">
+                <div id="placesWrap">
+                    <label for="places">Location: </label>
+                    <select id="places"></select>
+                </div>
+                <button id="submitNewCheckin" type="button" title="Submit" onclick="onNewCheckinSubmit()"><img src="https://maxcdn.icons8.com/Color/PNG/48/User_Interface/checked_checkbox-48.png" title="Check" width="54"></button>
+                <button id="cancelNewCheckin" type="button" title="Cancel" onclick="document.getElementById('checkinPreview').style.display='none';"><img src="https://maxcdn.icons8.com/Color/PNG/48/User_Interface/close_window-48.png" title="Close Window" width="54"></button>
+            </div>
+        </div></div>
         <script>
+            "use strict";
             var map;
             var labels = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
             var labelIndex = 0;
             var markers = [];
             var lastInfoWindow = null;
+            var lastUserPositionMarker = null;
             var lastUserPosition = null;
             var geo_options = {
                 enableHighAccuracy: true,
                 timeout: 10000,
                 maximumAge: 0
             };
+            var centered = false;
+            var newCheckinPhotoData;
 
             function geo_success(pos) {
-                var pos = {
+                var pos = lastUserPosition = {
                     lat: pos.coords.latitude,
                     lng: pos.coords.longitude,
                     accuracy: pos.coords.accuracy
                 };
 
-                if (lastUserPosition) {
-                    lastUserPosition.setPosition(pos);
+                if (lastUserPositionMarker) {
+                    lastUserPositionMarker.setPosition(pos);
                 } else {
-                    lastUserPosition = addMarker(pos, "&#x1f6b6;", "Your Position",
+                    lastUserPositionMarker = addMarker(pos, "&#x1f6b6;", "Your Position",
                     "<h3>Your Position</h3>"+'More or less ' + pos.accuracy + ' meters.',
                     "https://maxcdn.icons8.com/windows8/PNG/32/Maps/center_direction-32.png",
                     null);
+                }
+                if (!centered) {
+                    map.setCenter(pos);
+                    centered = true;
                 }
 
                 console.log('Your current position is:');
@@ -116,13 +184,13 @@
                 navigator.geolocation.watchPosition(geo_success, geo_error, geo_options);
                 
                 var centerControlDiv = document.createElement('div');
-                var centerControl = new TopControls(centerControlDiv, map);
+                var centerControl = new TopControls(centerControlDiv);
                 centerControlDiv.index = 1;
                 map.controls[google.maps.ControlPosition.TOP_CENTER].push(centerControlDiv);
                 
                 var bottomControlDiv = document.createElement('div');
                 bottomControlDiv.setAttribute("class", "bottomWrap");
-                var bottomControl = new BottomControls(bottomControlDiv, map);
+                var bottomControl = new BottomControls(bottomControlDiv);
                 bottomControlDiv.index = 1;
                 map.controls[google.maps.ControlPosition.BOTTOM_CENTER].push(bottomControlDiv);
             }
@@ -199,8 +267,74 @@
                     "timeTo": document.getElementById("timeTo").value.replace("T", " ")
                 }));
             }
+            
+            function findPossiblePlaces(lat, long) {
+                var xmlhttp = new XMLHttpRequest();
+                xmlhttp.onreadystatechange = function () {
+                    if (xmlhttp.readyState === 4) {
+                        if (xmlhttp.status >= 400) {
+                            try  {
+                                var responce = JSON.parse(xmlhttp.response);
+                                alert("Something went wrong.\n"+responce.error);
+                            } catch (err) {
+                                alert("Something went wrong...");
+                                throw err;
+                            }
+                        } else if (xmlhttp.status === 200) {
+                            var places = JSON.parse(xmlhttp.response);
+                            if (!places.results) {
+                                alert("Something went wrong...");
+                                return;
+                            }
+                            places = places.results;
+                            var placesSelect = document.getElementById("places");
+                            placesSelect.innerHTML = "";
+                            for (var i = 0; i < places.length; i++) {
+                                var place = {poiName: places[i]["address_components"][0]["long_name"],
+                                    poi: places[i]["place_id"],
+                                    poiCategory: places[i]["types"][0],
+                                    latitude: places[i]["geometry"]["location"]["lat"],
+                                    longitude: places[i]["geometry"]["location"]["lng"]
+                                };
+                                var placeElem = document.createElement("option");
+                                placeElem.innerHTML = place.poiName;
+                                placeElem.value = JSON.stringify(place);
+                                placesSelect.appendChild(placeElem);
+                            }
+                        }
+                    }
+                };
+                xmlhttp.open("GET", "https://maps.googleapis.com/maps/api/geocode/json?"
+                        + "result_type=point_of_interest|airport|park|locality|route&key=AIzaSyAedyifjS61f4hZG0kmYZXFLl6aKJ1gnuc"
+                        +"&latlng="+lat+","+long, true);
+                xmlhttp.send();
+            }
+            
+            function onNewCheckinSubmit() {
+                var xmlhttp = new XMLHttpRequest();
+                xmlhttp.onreadystatechange = function () {
+                    if (xmlhttp.readyState === 4) {
+                        if (xmlhttp.status >= 400) {
+                            try  {
+                                var responce = JSON.parse(xmlhttp.response);
+                                alert("Something went wrong.\n"+responce.error);
+                            } catch (err) {
+                                alert("Something went wrong...");
+                                throw err;
+                            }
+                        }
+                        document.getElementById('checkinPreview').style.display='none';
+                    }
+                };
+                xmlhttp.open("PUT", "/newCheckin", true);
+                
+                var places = document.getElementById("places");
+                var checkinRequest = JSON.parse(places.options[places.selectedIndex].value);
+                checkinRequest.photoData = newCheckinPhotoData;
+                xmlhttp.send(JSON.stringify(checkinRequest));
+            }
 
-            function TopControls(controlDiv, map) {
+            function TopControls(controlDiv) {
 
                 // Set CSS for the control border.
                 var controlInner = document.createElement('div');
@@ -227,19 +361,47 @@
                 });
             }
             
-            function BottomControls(controlDiv, map) {
+            function BottomControls(controlDiv) {
                 var controlInner = document.createElement('div');
                 controlInner.setAttribute("class", "controlInnerBottom");
                 controlDiv.appendChild(controlInner);
 
-                var newCheckinButton = document.createElement('div');
-                newCheckinButton.setAttribute("class", "newCheckin");
-                newCheckinButton.innerHTML = '<h3>New Checkin</h3>';
-                newCheckinButton.addEventListener('click', function () {
-                    Android.uploadPhoto();
-                }, false);
-                controlInner.appendChild(newCheckinButton);
+                if (typeof Android !== "undefined") {
+                    var newCheckinButton = document.createElement('div');
+                    newCheckinButton.setAttribute("class", "newCheckin");
+                    newCheckinButton.innerHTML = 'New Checkin';
+                    newCheckinButton.addEventListener('click', function () {
+                        Android.uploadPhoto();
+                    }, false);
+                    controlInner.appendChild(newCheckinButton);
+                } else {
+                    var newCheckinButton = document.createElement('input');
+                    newCheckinButton.setAttribute("class", "newCheckin");
+                    newCheckinButton.setAttribute("type", "file");
+                    newCheckinButton.setAttribute("accept", "image/*");
+                    newCheckinButton.addEventListener('change', function () {
+                        if (newCheckinButton.files.length === 0) return;
+                        var reader = new FileReader();
+                        reader.onload = function() {
+                          receivePhoto(reader.result.replace("data:image/jpeg;base64,", ""));
+                        };
+                        reader.readAsDataURL(newCheckinButton.files[0]);
+                    }, false);
+                    controlInner.appendChild(newCheckinButton);
+                }
             }
+            
+            window.receivePhoto = function (photoData) {
+                newCheckinPhotoData = photoData;
+                var photoPreview = document.getElementById("photoPreview");
+                var checkinPreview = document.getElementById("checkinPreview");
+                photoPreview.setAttribute("src", "data:image/jpeg;base64,"+photoData);
+                photoPreview.style.height = (window.innerHeight*0.6)+"px";
+                findPossiblePlaces(lastUserPosition.lat, lastUserPosition.lng);
+                checkinPreview.style.display = "block";
+            };
+            
+            
             // key=AIzaSyAedyifjS61f4hZG0kmYZXFLl6aKJ1gnuc
 //            google.maps.event.addDomListener(window, 'load', initialize);
         </script>

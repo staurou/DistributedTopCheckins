@@ -56,4 +56,44 @@ public class DataSource {
         System.out.println("Executed in "+((System.currentTimeMillis()-start)/1000.0)+", Fetched "+list.size()+" rows");
         return list;
     }
+    
+    public void createCheckin(Checkin ch) {
+        String statement = "INSERT INTO checkins VALUES (NULL,"+ch.getUserId()+",N'"
+                +ch.getPoi().replace("'", "''")+"',N'"+ch.getPoiName().replace("'", "''")
+                +"',N'"+ch.getPoiCategory().replace("'", "''")+"',"+
+                ch.getPoiCategoryId()+","+ch.getLatitude()+","+ch.getLongitude()
+                +",'"+DATE_FORMAT.format(ch.getTime())+"','"+ch.getPhotos().replace("'", "''")+"')";
+        
+        System.out.println("Executing query "+statement);
+        long start = System.currentTimeMillis();
+        try (Connection conn = ds.getConnection();
+            Statement stat = conn.createStatement();) {
+            stat.executeUpdate(statement);
+        } catch (SQLException ex) {
+            throw new IllegalStateException("Error communicating with database", ex);
+        }
+        System.out.println("Executed in "+((System.currentTimeMillis()-start)/1000.0)+", Inserted 1 row");
+    }
+    
+    public List<String> getPoiPhotos(String poi) {
+        String statement = "SELECT photos FROM ds_systems_2016_omada35.checkins WHERE POI = '"
+                +poi.replace("'", "''")+"' AND photos <> 'Not exists';";
+         
+        List<String> result = new LinkedList<>();
+        
+        System.out.println("Executing query "+statement);
+        long start = System.currentTimeMillis();
+        try (Connection conn = ds.getConnection();
+            Statement stat = conn.createStatement();
+            ResultSet rs = stat.executeQuery(statement);) {
+            while (rs.next()) {
+                result.add(rs.getString(1));
+            }
+            
+        } catch (SQLException ex) {
+            throw new IllegalStateException("Error communicating with database", ex);
+        }
+        System.out.println("Executed in "+((System.currentTimeMillis()-start)/1000.0)+", Fetched "+result.size()+" rows");
+        return result;
+    }
 }

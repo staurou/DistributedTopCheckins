@@ -1,7 +1,6 @@
 package ssn;
 
 import ssn.models.*;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
@@ -9,6 +8,9 @@ import java.io.*;
 import java.net.*;
 import java.nio.channels.*;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.sql.SQLException;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
@@ -90,10 +92,16 @@ public class Master {
     private String reducerAddress;
     private int reducerPort;
     
+    private DataSource ds;
+    private String imageFilePath = DEFAULT_IMAGE_FILEPATH;
+    
     public void initialize(int clientPort, int controlPort, String reducerAddress,
-            int reducerPort, int httpPort) throws IOException {
+            int reducerPort, int httpPort) throws IOException, SQLException {
         this.reducerAddress = reducerAddress;
         this.reducerPort = reducerPort;
+        
+        ds = new DataSource(DEFAULT_DATASOURCE_HOST,  DEFAULT_DATASOURCE_SCHEMA, DEFAULT_DATASOURCE_USERNAME, DEFAULT_DATASOURCE_PASSWORD);
+        Files.createDirectories(Paths.get(imageFilePath));
         
         channelGroup = AsynchronousChannelGroup.withThreadPool(Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()));
         
@@ -136,6 +144,9 @@ public class Master {
         HttpServer server = HttpServer.create(new InetSocketAddress(httpPort), 0);
         server.createContext("/locationStats", this::onLocationStatsHttp);
         server.createContext("/", this::onHomeHttp);
+        server.createContext("/newCheckin", this::onNewCheckinHttp);
+        server.createContext("/photo", this::onPhotoHttp);
+        server.createContext("/poiPhotos", this::onPoiPhotosHttp);
         server.setExecutor(null); // creates a default executor
         server.start();
         
@@ -237,25 +248,74 @@ public class Master {
             clientRequests.put(id, new ClientRequest(id, he));
             sendToMappers(id, req);
 
-        } catch (IOException ex) {
+        } catch (Exception ex) {
+            ex.printStackTrace();
             markFailed(id);
             httpWriteJsonAndClose(he, 500, new ErrorReply(ex.getMessage(), 500));
-            ex.printStackTrace();
         }
 
     }
     
     private void onHomeHttp(HttpExchange he) throws IOException {
-        BufferedInputStream file = new BufferedInputStream(getClass().getClassLoader().getResourceAsStream("home.html"));
-        he.getResponseHeaders().set("Content-Type", "text/html; charset=UTF-8");
-        he.sendResponseHeaders(200, file.available());
-        try (OutputStream os = new BufferedOutputStream(he.getResponseBody())) {
-            int b;
-            while ((b=file.read()) != -1) {
-                os.write(b);
+        try (BufferedInputStream file = new BufferedInputStream(getClass().getClassLoader().getResourceAsStream("home.html"))) {
+            he.getResponseHeaders().set("Content-Type", "text/html; charset=UTF-8");
+            he.sendResponseHeaders(200, file.available());
+            try (OutputStream os = new BufferedOutputStream(he.getResponseBody())) {
+                int b;
+                while ((b=file.read()) != -1) {
+                    os.write(b);
+                }
             }
+            he.close();
         }
-        he.close();
+    }
+    
+    private void onPhotoHttp(HttpExchange he) throws IOException {
+        try (BufferedInputStream file
+                = new BufferedInputStream(
+                new FileInputStream(imageFilePath+File.separator+he.getRequestURI().getQuery()));) {
+            he.getResponseHeaders().set("Content-Type", "image/jpeg;");
+            he.sendResponseHeaders(200, file.available());
+            try (OutputStream os = new BufferedOutputStream(he.getResponseBody())) {
+                int b;
+                while ((b=file.read()) != -1) {
+                    os.write(b);
+                }
+            }
+            he.close();
+        } catch (FileNotFoundException e) {
+            httpWriteJsonAndClose(he, 404, new ErrorReply(e.getMessage(), 404));
+        } catch (Exception e) {
+            e.printStackTrace();
+            httpWriteJsonAndClose(he, 500, new ErrorReply(e.getMessage(), 500));
+        }
+    }
+    
+        private void onPoiPhotosHttp(HttpExchange he) throws IOException {
+        try {
+            httpWriteJsonAndClose(he, 200, ds.getPoiPhotos(he.getRequestURI().getQuery()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            httpWriteJsonAndClose(he, 500, new ErrorReply(e.getMessage(), 500));
+        }
+    }
+    
+    private void onNewCheckinHttp(HttpExchange he) throws IOException {
+        System.out.println("Create checkin request");
+        try {
+            final ObjectMapper m = new ObjectMapper();
+            CheckinRequest req = m.readValue(he.getRequestBody(), CheckinRequest.class);
+            String photoUrl = System.currentTimeMillis()+".jpg";
+            Files.write(Paths.get(imageFilePath, photoUrl), Base64.getDecoder().decode(req.getPhotoData().getBytes(StandardCharsets.UTF_8)));
+            Checkin ch = new Checkin(0, 0, req.getPoi(), req.getPoiName(),
+                    req.getPoiCategory(), req.getPoiCategory().hashCode(),
+                    req.getLatitude(), req.getLongitude(), new Date(), "/photo?"+photoUrl);
+            ds.createCheckin(ch);
+            httpWriteJsonAndClose(he, 200, "ok");
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            httpWriteJsonAndClose(he, 500, new ErrorReply(ex.getMessage(), 500));
+        }
     }
     
     private void sendToMappers(long id, LocationStatsRequest req) throws IOException {
@@ -397,7 +457,7 @@ public class Master {
             + ", \nDefault REDUCER_ADDRESS is localhost"
             + ", \nDefault REDUCER_PORT is "+DEFAULT_REDUCER_PORT;
     
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, SQLException {
         Master instance = new Master();
         
         Map<String, List<String>> options = parseArgs(args, Arrays.asList("-p", "-cp", "-m", "-r", "-h","-http", "-addmapper", "-removemapper"));
