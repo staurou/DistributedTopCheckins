@@ -3,7 +3,7 @@
     <head>
         <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
         <meta charset="utf-8">
-        <title>Marker Labels</title>
+        <title>Checkins</title>
         <style>
             html, body {
                 height: 100%;
@@ -221,7 +221,6 @@
 
             function geo_error(err) {
                 console.warn('ERROR(' + err.code + '): ' + err.message);
-                alert('ERROR(' + err.code + '): ' + err.message);
             }
 
             function initialize() {
@@ -315,8 +314,8 @@
                     "longitudeTo": bounds.getNorthEast().lng(),
                     "latitudeFrom": bounds.getSouthWest().lat(),
                     "latitudeTo": bounds.getNorthEast().lat(),
-                    "timeFrom": document.getElementById("timeFrom").value.replace("T", " "),
-                    "timeTo": document.getElementById("timeTo").value.replace("T", " ")
+                    "timeFrom": document.getElementById("timeFrom").value.replace("T", " ")+":00",
+                    "timeTo": document.getElementById("timeTo").value.replace("T", " ")+":00"
                 }));
             }
             
@@ -411,6 +410,8 @@
                                 alert("Something went wrong...");
                                 throw err;
                             }
+                        } else {
+                            getCheckins();
                         }
                         document.getElementById('checkinPreview').style.display='none';
                     }
@@ -433,7 +434,7 @@
 
                 var dateTime = document.createElement('div');
                 dateTime.setAttribute("class", "dateTime");
-                dateTime.innerHTML = '<label for="timeFrom">From</label> <input id="timeFrom" type="datetime-local" value="2005-01-01T01:01:01"/><br/><br/><label for="timeTo">Until</label> <input id="timeTo" type="datetime-local" value="2025-01-01T01:01:01"/>';
+                dateTime.innerHTML = '<label for="timeFrom">From</label> <input id="timeFrom" type="datetime-local" value="2005-01-01T01:01"/><br/><br/><label for="timeTo">Until</label> <input id="timeTo" type="datetime-local" value="2025-01-01T01:01"/>';
                 controlInner.appendChild(dateTime);
 
                 // Set CSS for the control interior.
@@ -481,6 +482,13 @@
             }
             
             window.receivePhoto = function (photoData) {
+                if (typeof photoData === "undefined" || photoData === null) {
+                    try {
+                        photoData = Android.getPhotoData();
+                    } catch (err) {
+                        alert("Something went wrong: "+err);
+                    }
+                }
                 newCheckinPhotoData = photoData;
                 var photoPreview = document.getElementById("photoPreview");
                 var checkinPreview = document.getElementById("checkinPreview");

@@ -306,7 +306,7 @@ public class Master {
         try {
             final ObjectMapper m = new ObjectMapper();
             CheckinRequest req = m.readValue(he.getRequestBody(), CheckinRequest.class);
-            String photoUrl = System.currentTimeMillis()+".jpg";
+            String photoUrl = System.currentTimeMillis()+"_"+Math.floor(Math.random()*100)+".jpg";
             Files.write(Paths.get(imageFilePath, photoUrl), Base64.getDecoder().decode(req.getPhotoData().getBytes(StandardCharsets.UTF_8)));
             Checkin ch = new Checkin(0, 0, req.getPoi(), req.getPoiName(),
                     req.getPoiCategory(), req.getPoiCategory().hashCode(),

@@ -1,10 +1,10 @@
 package ssn.distributedtopcheckins;
 
-import android.app.Activity;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.graphics.Bitmap;
+import android.location.LocationManager;
 import android.net.Uri;
+import android.os.Environment;
 import android.provider.MediaStore;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
@@ -15,73 +15,131 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.*;
 import android.widget.EditText;
+import android.widget.Toast;
 
 import java.io.BufferedInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class MainActivity extends AppCompatActivity {
 
     public static final int TAKE_PICTURE = 0;
 
-    static class JsHandle {
-        Activity activity;
+    class JsHandle {
         WebView webView;
 
-        public JsHandle(WebView webView, Activity activity) {
+        public JsHandle(WebView webView) {
             this.webView = webView;
-            this.activity = activity;
         }
 
         @JavascriptInterface
         void uploadPhoto() {
-            activity.runOnUiThread(new Runnable() {
+            runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    Intent takePicture = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-                    activity.startActivityForResult(takePicture, TAKE_PICTURE);
+                Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                // Ensure that there's a camera activity to handle the intent
+                if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
+                    // Create the File where the photo should go
+                    File photoFile = null;
+                    try {
+                        photoFile = createImageFile();
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
+                    // Continue only if the File was successfully created
+                    if (photoFile != null) {
+                        Uri photoURI = Uri.fromFile(photoFile);
+                        takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
+                        waitingPhoto = true;
+                        startActivityForResult(takePictureIntent, TAKE_PICTURE);
+                    }
+                }
+
                 }
             });
+        }
+
+        @JavascriptInterface
+        String getPhotoData() {
+            return readAsBase64(mCurrentPhotoPath);
+        }
+    }
+
+    private String mCurrentPhotoPath;
+    private String server;
+    private boolean waitingPhoto;
+    private boolean reloadedWhileWaitingPhoto;
+
+    private File createImageFile() throws IOException {
+        // Create an image file name
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        String imageFileName = "JPEG_" + timeStamp + "_";
+        File storageDir = getExternalCacheDir();
+//        File storageDir = new File("/");
+        File image = File.createTempFile(
+                imageFileName,  /* prefix */
+                ".jpg",         /* suffix */
+                storageDir      /* directory */
+        );
+
+        // Save a file: path for use with ACTION_VIEW intents
+        mCurrentPhotoPath = image.getAbsolutePath();
+        return image;
+    }
+
+    private String readAsBase64(String path) {
+        try (InputStream in = new BufferedInputStream(new FileInputStream(path))) {
+            final byte[] data = new byte[in.available()];
+            in.read(data);
+            return new String(Base64.encode(data, Base64.NO_WRAP), "UTF-8");
+        } catch (final IOException e) {
+            Log.e("APP", e.toString());
+            throw new IllegalStateException(e.getMessage(), e);
         }
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent imageReturnedIntent) {
         super.onActivityResult(requestCode, resultCode, imageReturnedIntent);
-        if (resultCode == RESULT_OK){
-            final Uri selectedImage = imageReturnedIntent.getData();
+        waitingPhoto = false;
+        if (resultCode == RESULT_OK) {
             final WebView webview = (WebView) findViewById(R.id.webView);
-            try (InputStream in = new BufferedInputStream(getContentResolver().openInputStream(selectedImage))) {
-                Log.d("APP", "avail "+in.available());
-                final byte[] data = new byte[in.available()];
-                in.read(data);
+            final String command = !reloadedWhileWaitingPhoto ?
+                    "receivePhoto();" :
+                    "window.setTimeout(function () {alert('haha');receivePhoto();}, 2000);";
+            assert webview != null;
+            if (reloadedWhileWaitingPhoto) {
+                webview.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        webview.evaluateJavascript(command, null);
+                    }
+                }, 2000);
+            } else {
                 webview.post(new Runnable() {
                     @Override
                     public void run() {
-                            String imageData = Base64.encodeToString(data, Base64.DEFAULT);
-                            Log.d("APP", imageData);
-                            webview.loadUrl("javascript:onload= function () { receivePhoto('"+ imageData+"');}", null);
-                    }
-                });
-
-            } catch (final IOException e) {
-                webview.post(new Runnable() {
-                    @Override public void run() {
-                        webview.loadUrl("javascript:alert('Something went wrong: "+e.getMessage()+"');");
+                        webview.evaluateJavascript(command, null);
                     }
                 });
             }
+        } else {
+            mCurrentPhotoPath = null;
         }
+        reloadedWhileWaitingPhoto = false;
     }
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
+        outState.putString("mCurrentPhotoPath", mCurrentPhotoPath);
+        outState.putString("server", server);
+        outState.putBoolean("waitingPhoto", waitingPhoto);
     }
 
     @Override
@@ -98,6 +156,14 @@ public class MainActivity extends AppCompatActivity {
             public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
                 callback.invoke(origin, true, false);
             }
+
+            public boolean onConsoleMessage(ConsoleMessage cm) {
+                Log.d("APP", cm.message() + " -- From line "
+                        + cm.lineNumber() + " of "
+                        + cm.sourceId() );
+                return true;
+            }
+
         });
 
 
@@ -107,29 +173,37 @@ public class MainActivity extends AppCompatActivity {
         settings.setAppCacheEnabled(true);
         settings.setDomStorageEnabled(true);
 
-        webview.addJavascriptInterface(new JsHandle(webview, this), "Android");
+        webview.addJavascriptInterface(new JsHandle(webview), "Android");
 
-        final EditText txtUrl = new EditText(this);
+        if (savedInstanceState != null) {
+            mCurrentPhotoPath = savedInstanceState.getString("mCurrentPhotoPath");
+            server = savedInstanceState.getString("server");
+            waitingPhoto = savedInstanceState.getBoolean("waitingPhoto");
+            if (waitingPhoto) reloadedWhileWaitingPhoto = true;
+        } else {
+            if (!((LocationManager) getSystemService( LOCATION_SERVICE )).isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                Toast.makeText(this, "For best results enable GPS", Toast.LENGTH_LONG).show();
+            }
+        }
 
-        // Set the default text to a link of the Queen
-        txtUrl.setHint("http://192.168.1.120:8000");
-        txtUrl.setText("http://192.168.1.120:8000");
+        if ((savedInstanceState == null) || ((server = savedInstanceState.getString("server")) == null)) {
+            final EditText txtUrl = new EditText(this);
+            txtUrl.setHint("http://snf-581842.vm.okeanos.grnet.gr:8000");
+            txtUrl.setText("http://snf-581842.vm.okeanos.grnet.gr:8000");
 
-        new AlertDialog.Builder(this)
-                .setTitle("Server")
-                .setMessage("Please insert server adress")
-                .setView(txtUrl)
-                .setPositiveButton("Moustachify", new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int whichButton) {
-                        String url = txtUrl.getText().toString();
-                        webview.loadUrl(url);
-                    }
-                })
-                .show();
+            new AlertDialog.Builder(this)
+                    .setTitle("Server:")
+                    .setView(txtUrl)
+                    .setPositiveButton("CONNECT", new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int whichButton) {
+                            server = txtUrl.getText().toString();
+                            webview.loadUrl(server);
+                        }
+                    })
+                    .show();
+        } else {
+            webview.loadUrl(server);
+        }
     }
 
-    @Override
-    protected void onRestoreInstanceState(Bundle savedInstanceState) {
-        super.onRestoreInstanceState(savedInstanceState);
-    }
 }
